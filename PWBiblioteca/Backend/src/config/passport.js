@@ -13,10 +13,11 @@ module.exports = (app) => {
   };
 
   const strategy = new Strategy(params, (payload, done) => {
-    if (new Date() >= payload.expires) done(null, false);
+    if (Date.now() >= payload.expires) return done(null, false);
 
     app.services.utilizador.findByField({ email: payload.email })
       .then((user) => {
+        // Mantém o role (e restantes campos) do payload em req.user.
         if (user) done(null, { ...payload });
         else done(null, false);
       }).catch((err) => done(err, false));

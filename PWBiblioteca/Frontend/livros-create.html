@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Criar Livro - Biblioteca</title>
+  <style>
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f4f7fb; color: #1f2937; }
+    .container { max-width: 600px; margin: 60px auto; background: white; padding: 32px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+    h1 { color: #1e3a5f; margin-top: 0; }
+    hr { border: none; height: 3px; width: 60px; background: #3b82f6; margin: 0 0 24px 0; border-radius: 999px; }
+    label { display: block; margin-bottom: 8px; font-weight: bold; }
+    input, select { width: 100%; padding: 12px 14px; margin-bottom: 18px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
+    input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+    .btn { padding: 12px 18px; border-radius: 10px; border: none; text-decoration: none; cursor: pointer; font-weight: bold; background: #1e3a5f; color: white; display: inline-block; }
+    .btn:hover { background: #2c5d8a; }
+    .secondary { background: #6b7280; }
+    .secondary:hover { background: #4b5563; }
+    .message { margin-top: 16px; color: #dc2626; }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Criar Livro</h1>
+    <hr>
+
+    <form id="createForm">
+      <label for="titulo">Título</label>
+      <input type="text" id="titulo" required>
+
+      <label for="autor">Autor</label>
+      <input type="text" id="autor" required>
+
+      <label for="isbn">ISBN</label>
+      <input type="text" id="isbn" required>
+
+      <label for="estado">Estado</label>
+      <select id="estado">
+        <option value="disponivel">disponivel</option>
+        <option value="reservado">reservado</option>
+      </select>
+
+      <button type="submit" class="btn">Guardar</button>
+      <a href="livros.html" class="btn secondary">Voltar</a>
+
+      <p id="message" class="message"></p>
+    </form>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script>
+    checkAuth();
+    // Só bibliotecario/admin podem criar livros.
+    if (!isStaff()) {
+      window.location.href = 'livros.html';
+    }
+
+    document.getElementById('createForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const message = document.getElementById('message');
+
+      const body = {
+        titulo: document.getElementById('titulo').value,
+        autor: document.getElementById('autor').value,
+        isbn: document.getElementById('isbn').value,
+        estado: document.getElementById('estado').value,
+      };
+
+      try {
+        const response = await fetch(`${API_BASE}/v1/livros`, {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(body),
+        });
+
+        if (response.status === 201) {
+          window.location.href = 'livros.html';
+        } else {
+          const data = await response.json();
+          message.textContent = data.error || 'Erro ao criar livro.';
+        }
+      } catch {
+        message.textContent = 'Não foi possível ligar ao servidor.';
+      }
+    });
+  </script>
+</body>
+</html>
