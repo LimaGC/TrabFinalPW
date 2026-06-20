@@ -1,0 +1,1808 @@
+Add CORS to app.js
+const { v4: uuidv4 } = require('uuid');
+const cors = require('cors');
+ 
+const app = require('express')();
+app.use(cors({ origin: '*' }));
+ 
+const consign = require('consign');
+ 
+const knex = require('knex');
+const config = require('./config');
+const knexfile = require('../knexfile');
+ 
+// app.db = knex(knexfile.development);
+app.db = knex(knexfile[config.NODE_ENV]);
+ 
+consign({ cwd: 'src', verbose: false })
+  .include('./config/passport.js')
+  .then('./config/middlewares.js')
+  .then('./services')
+  .then('./routes')
+  .then('./config/router.js')
+  .into(app);
+ 
+app.get('/', (req, res) => {
+  res.status(200).json({ debug: 'App: Programação Web 202526'});
+});
+ 
+app.use((err, req, res, next) => {
+  const { name, message, stack } = err;
+  if (name === 'validationError') res.status(400).json({ error: message });
+  else if (name === 'forbiddenError') res.status(403).json({ error: message });
+  else if (name === 'authenticationError') res.status(400).json({ error: message });
+  else {
+    const id = uuidv4();
+    console.log(message);
+    //app.log.error({
+    //  id, name, message, stack,
+    //});
+    res.status(500).json({ id, error: 'System error. Please concact admin!' });
+  }
+  next(err);
+});
+ 
+module.exports = app;
+ 
+
+Create frontEnd file - login.html
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign In</title>
+ 
+  <style>
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+ 
+    .signin-container {
+      width: 100%;
+      max-width: 420px;
+      margin: 60px auto;
+      background: #ffffff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+ 
+    .signin-header {
+      background: linear-gradient(135deg, #1e3a5f, #2c5d8a);
+      color: white;
+      padding: 32px;
+      text-align: center;
+    }
+ 
+    .signin-header h1 {
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: 1px;
+    }
+ 
+    .signin-header h2 {
+      margin: 8px 0 0;
+      font-size: 16px;
+      font-weight: normal;
+      color: white;
+    }
+ 
+    .signin-body {
+      padding: 32px;
+    }
+ 
+    h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 20px;
+      color: #1e3a5f;
+    }
+ 
+    hr {
+      border: none;
+      height: 3px;
+      width: 60px;
+      background: #3b82f6;
+      margin: 0 0 24px 0;
+      border-radius: 999px;
+    }
+ 
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #374151;
+    }
+ 
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+ 
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+ 
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: #1e3a5f;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+ 
+    button:hover {
+      background: #2c5d8a;
+    }
+ 
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+ 
+    .message {
+      margin-top: 16px;
+      font-size: 14px;
+      text-align: center;
+    }
+ 
+    .error {
+      color: #dc2626;
+    }
+ 
+    .success {
+      color: #16a34a;
+    }
+ 
+    .extra-links {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 14px;
+    }
+ 
+    a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+ 
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+ 
+<body>
+ 
+  <div class="signin-container">
+    <div class="signin-header">
+      <h1>ESTG</h1>
+      <h2>Sign In</h2>
+    </div>
+ 
+    <div class="signin-body">
+      <h2>Welcome Back</h2>
+      <hr>
+ 
+      <form id="loginForm">
+        <label for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          placeholder="Introduza o seu email"
+          required
+        >
+ 
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Introduza a sua password"
+          required
+        >
+ 
+        <button type="submit" id="loginButton">Sign In</button>
+ 
+        <p id="message" class="message"></p>
+      </form>
+ 
+      <div class="extra-links">
+        <p><a href="#">Forgot password?</a></p>
+        <p>Don't have an account? <a href="#">Create account</a></p>
+      </div>
+    </div>
+  </div>
+ 
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const loginButton = document.getElementById('loginButton');
+    const message = document.getElementById('message');
+ 
+    loginForm.addEventListener('submit', async function(event) {
+      event.preventDefault();
+ 
+      const email = document.getElementById('email').value;
+      const pass = document.getElementById('password').value;
+ 
+      message.textContent = '';
+      message.className = 'message';
+ 
+      loginButton.disabled = true;
+      loginButton.textContent = 'A autenticar...';
+ 
+      try {
+        const response = await fetch('http://localhost:4001/auths/signin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email,
+            pass: pass
+          })
+        });
+ 
+        const data = await response.json();
+ 
+        if (response.status === 200) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('email', email);
+ 
+          message.textContent = 'Login efetuado com sucesso.';
+          message.classList.add('success');
+ 
+          window.location.href = 'dashboard.html';
+        } else if (response.status === 400) {
+          message.textContent = data.error || 'Authentication Error';
+          message.classList.add('error');
+        } else {
+          message.textContent = 'Erro inesperado. Tente novamente.';
+          message.classList.add('error');
+        }
+ 
+      } catch (error) {
+        console.error(error);
+ 
+        message.textContent = 'Não foi possível ligar ao servidor.';
+        message.classList.add('error');
+      }
+ 
+      loginButton.disabled = false;
+      loginButton.textContent = 'Sign In';
+    });
+  </script>
+ 
+</body>
+</html>
+ 
+FrontEnd - create page - dashboard.html
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+ 
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+ 
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+ 
+    .sidebar {
+      width: 260px;
+      background: #1e3a5f;
+      color: white;
+      padding: 28px 20px;
+      box-sizing: border-box;
+    }
+ 
+    .sidebar h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+ 
+    .sidebar h2 {
+      margin: 8px 0 32px;
+      font-size: 14px;
+      font-weight: normal;
+      text-align: center;
+      color: #dbeafe;
+    }
+ 
+    .menu a {
+      display: block;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      color: white;
+      text-decoration: none;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      font-weight: bold;
+    }
+ 
+    .menu a:hover {
+      background: #2c5d8a;
+    }
+ 
+    .logout {
+      margin-top: 32px;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: #dc2626;
+      color: white;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+ 
+    .logout:hover {
+      background: #b91c1c;
+    }
+ 
+    .content {
+      flex: 1;
+      padding: 40px;
+      box-sizing: border-box;
+    }
+ 
+    .topbar {
+      background: linear-gradient(135deg, #1e3a5f, #2c5d8a);
+      color: white;
+      padding: 28px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      margin-bottom: 28px;
+    }
+ 
+    .topbar h1 {
+      margin: 0;
+      font-size: 32px;
+    }
+ 
+    .topbar p {
+      margin: 8px 0 0;
+      color: #e0f2fe;
+    }
+ 
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 22px;
+    }
+ 
+    .card {
+      background: white;
+      padding: 26px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+ 
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 20px;
+      color: #1e3a5f;
+    }
+ 
+    .card hr {
+      border: none;
+      height: 3px;
+      width: 60px;
+      background: #3b82f6;
+      margin: 0 0 18px 0;
+      border-radius: 999px;
+    }
+ 
+    .card p {
+      line-height: 1.6;
+      color: #374151;
+    }
+ 
+    .card a {
+      display: inline-block;
+      margin-top: 12px;
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: bold;
+    }
+ 
+    .card a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+ 
+<body>
+ 
+  <div class="layout">
+ 
+    <aside class="sidebar">
+      <h1>ESTG</h1>
+      <h2>Curriculum Manager</h2>
+ 
+      <nav class="menu">
+        <a href="names.html">Names</a>
+        <a href="skills.html">Skills</a>
+        <a href="contact-types.html">Contact Types</a>
+        <a href="contacts.html">Contacts</a>
+      </nav>
+ 
+      <button class="logout" onclick="logout()">Logout</button>
+    </aside>
+ 
+    <main class="content">
+      <section class="topbar">
+        <h1>Dashboard</h1>
+        <p>Bem-vindo à área de gestão do currículo.</p>
+      </section>
+ 
+      <section class="cards">
+ 
+        <div class="card">
+          <h2>Names</h2>
+          <hr>
+          <p>Gerir nomes, títulos e informação principal do currículo.</p>
+          <a href="names.html">Gerir Names</a>
+        </div>
+ 
+        <div class="card">
+          <h2>Skills</h2>
+          <hr>
+          <p>Gerir competências técnicas, pessoais e profissionais.</p>
+          <a href="skills.html">Gerir Skills</a>
+        </div>
+ 
+        <div class="card">
+          <h2>Contact Types</h2>
+          <hr>
+          <p>Gerir tipos de contacto, como email, telefone, página web ou redes sociais.</p>
+          <a href="contact-types.html">Gerir Contact Types</a>
+        </div>
+ 
+        <div class="card">
+          <h2>Contacts</h2>
+          <hr>
+          <p>Gerir contactos associados ao currículo.</p>
+          <a href="contacts.html">Gerir Contacts</a>
+        </div>
+ 
+      </section>
+    </main>
+ 
+  </div>
+ 
+  <script>
+    function isTokenValid(token) {
+      if (!token) {
+        return false;
+      }
+ 
+      try {
+        const payloadBase64 = token.split('.')[1];
+ 
+        if (!payloadBase64) {
+          return false;
+        }
+ 
+        const payloadJson = atob(payloadBase64);
+        const payload = JSON.parse(payloadJson);
+ 
+        const now = Date.now();
+ 
+        if (payload.expires && payload.expires < now) {
+          return false;
+        }
+ 
+        if (payload.exp && payload.exp * 1000 < now) {
+          return false;
+        }
+ 
+        return true;
+ 
+      } catch (error) {
+        return false;
+      }
+    }
+ 
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('email');
+      window.location.href = 'login.html';
+    }
+ 
+    const token = localStorage.getItem('token');
+ 
+    if (!isTokenValid(token)) {
+      logout();
+    }
+  </script>
+ 
+</body>
+</html>
+ 
+Front-End - create file: names.html
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Names</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+ 
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+ 
+    .sidebar {
+      width: 260px;
+      background: #1e3a5f;
+      color: white;
+      padding: 28px 20px;
+      box-sizing: border-box;
+    }
+ 
+    .sidebar h1 {
+      margin: 0;
+      font-size: 28px;
+      text-align: center;
+    }
+ 
+    .sidebar h2 {
+      margin: 8px 0 32px;
+      font-size: 14px;
+      font-weight: normal;
+      text-align: center;
+      color: #dbeafe;
+    }
+ 
+    .menu a {
+      display: block;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      color: white;
+      text-decoration: none;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      font-weight: bold;
+    }
+ 
+    .menu a:hover,
+    .menu a.active {
+      background: #2c5d8a;
+    }
+ 
+    .logout {
+      margin-top: 32px;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: #dc2626;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+ 
+    .content {
+      flex: 1;
+      padding: 40px;
+      box-sizing: border-box;
+    }
+ 
+    .topbar {
+      background: linear-gradient(135deg, #1e3a5f, #2c5d8a);
+      color: white;
+      padding: 28px;
+      border-radius: 16px;
+      margin-bottom: 28px;
+    }
+ 
+    .topbar h1 {
+      margin: 0;
+    }
+ 
+    .card {
+      background: white;
+      padding: 26px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+ 
+    .actions {
+      margin-bottom: 20px;
+      text-align: right;
+    }
+ 
+    .btn {
+      display: inline-block;
+      padding: 12px 18px;
+      border-radius: 10px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      background: #1e3a5f;
+      color: white;
+    }
+ 
+    .btn:hover {
+      background: #2c5d8a;
+    }
+ 
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+ 
+    th {
+      background: #eef4fa;
+      color: #1e3a5f;
+      text-align: left;
+      padding: 14px;
+    }
+ 
+    td {
+      padding: 14px;
+      border-top: 1px solid #e5e7eb;
+    }
+ 
+    .message {
+      text-align: center;
+      color: #dc2626;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+ 
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h1>ESTG</h1>
+      <h2>Curriculum Manager</h2>
+ 
+      <nav class="menu">
+        <a href="names.html" class="active">Names</a>
+        <a href="skills.html">Skills</a>
+        <a href="contact-types.html">Contact Types</a>
+        <a href="contacts.html">Contacts</a>
+      </nav>
+ 
+      <button class="logout" onclick="logout()">Logout</button>
+    </aside>
+ 
+    <main class="content">
+      <section class="topbar">
+        <h1>Names</h1>
+        <p>Gestão dos nomes registados.</p>
+      </section>
+ 
+      <section class="card">
+        <div class="actions">
+          <a href="names-create.html" class="btn">CREATE</a>
+        </div>
+ 
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nome</th>
+              <th>Email</th>
+              <th>Criado em</th>
+              <th>Atualizado em</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="namesTable"></tbody>
+        </table>
+ 
+        <p id="message" class="message"></p>
+      </section>
+    </main>
+  </div>
+ 
+  <script>
+    const API_URL = 'http://localhost:4001/v1/names';
+ 
+    function isTokenValid(token) {
+      if (!token) return false;
+ 
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const now = Date.now();
+ 
+        if (payload.expires && payload.expires < now) return false;
+        if (payload.exp && payload.exp * 1000 < now) return false;
+ 
+        return true;
+      } catch {
+        return false;
+      }
+    }
+ 
+    function checkAuth() {
+      const token = localStorage.getItem('token');
+ 
+      if (!isTokenValid(token)) {
+        logout();
+      }
+ 
+      return token;
+    }
+ 
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('email');
+      window.location.href = 'login.html';
+    }
+ 
+    async function loadNames() {
+      const token = checkAuth();
+      const table = document.getElementById('namesTable');
+      const message = document.getElementById('message');
+ 
+      try {
+        const response = await fetch(API_URL, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+ 
+        if (!response.ok) {
+          throw new Error('Erro ao carregar registos.');
+        }
+ 
+        const names = await response.json();
+ 
+        table.innerHTML = '';
+ 
+        names.forEach(item => {
+          const row = document.createElement('tr');
+ 
+          row.innerHTML = `
+            <td>${item.id}</td>
+            <td>${item.name || ''}</td>
+            <td>${item.email || ''}</td>
+            <td>${item.created_at || ''}</td>
+            <td>${item.updated_at || ''}</td>
+            <td>
+              <a class="btn" href="names-edit.html?id=${item.id}">Editar</a>
+            </td>
+          `;
+ 
+          table.appendChild(row);
+        });
+ 
+      } catch (error) {
+        message.textContent = error.message;
+      }
+    }
+ 
+    loadNames();
+  </script>
+</body>
+</html>
+ 
+
+Front-End create file: names-create.html
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Name</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+ 
+    .container {
+      max-width: 600px;
+      margin: 60px auto;
+      background: white;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+ 
+    h1 {
+      color: #1e3a5f;
+      margin-top: 0;
+    }
+ 
+    hr {
+      border: none;
+      height: 3px;
+      width: 60px;
+      background: #3b82f6;
+      margin: 0 0 24px 0;
+      border-radius: 999px;
+    }
+ 
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+ 
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+ 
+    .btn {
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: none;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: bold;
+      background: #1e3a5f;
+      color: white;
+      display: inline-block;
+    }
+ 
+    .btn:hover {
+      background: #2c5d8a;
+    }
+ 
+    .secondary {
+      background: #6b7280;
+    }
+ 
+    .message {
+      margin-top: 16px;
+      color: #dc2626;
+    }
+  </style>
+</head>
+ 
+<body>
+  <div class="container">
+    <h1>Create Name</h1>
+    <hr>
+ 
+    <form id="createForm">
+      <label for="name">Nome</label>
+      <input type="text" id="name" required>
+ 
+      <button type="submit" class="btn">Guardar</button>
+      <a href="names.html" class="btn secondary">Voltar</a>
+ 
+      <p id="message" class="message"></p>
+    </form>
+  </div>
+ 
+  <script>
+    const API_URL = 'http://localhost:4001/v1/names';
+ 
+    function isTokenValid(token) {
+      if (!token) return false;
+ 
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const now = Date.now();
+ 
+        if (payload.expires && payload.expires < now) return false;
+        if (payload.exp && payload.exp * 1000 < now) return false;
+ 
+        return true;
+      } catch {
+        return false;
+      }
+    }
+ 
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('email');
+      window.location.href = 'login.html';
+    }
+ 
+    function checkAuth() {
+      const token = localStorage.getItem('token');
+ 
+      if (!isTokenValid(token)) {
+        logout();
+      }
+ 
+      return token;
+    }
+ 
+    document.getElementById('createForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+ 
+      const token = checkAuth();
+      const name = document.getElementById('name').value;
+      const message = document.getElementById('message');
+ 
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ name: name })
+        });
+ 
+        if (response.status === 201) {
+          window.location.href = 'names.html';
+        } else {
+          message.textContent = 'Erro ao criar registo.';
+        }
+ 
+      } catch {
+        message.textContent = 'Não foi possível ligar ao servidor.';
+      }
+    });
+ 
+    checkAuth();
+  </script>
+</body>
+</html>
+ 
+ Front-end - create file: names-edit.html
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Name</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+ 
+    .container {
+      max-width: 600px;
+      margin: 60px auto;
+      background: white;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+ 
+    h1 {
+      color: #1e3a5f;
+      margin-top: 0;
+    }
+ 
+    hr {
+      border: none;
+      height: 3px;
+      width: 60px;
+      background: #3b82f6;
+      margin: 0 0 24px 0;
+      border-radius: 999px;
+    }
+ 
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+ 
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+ 
+    .info {
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 18px;
+    }
+ 
+    .btn {
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: none;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: bold;
+      background: #1e3a5f;
+      color: white;
+      display: inline-block;
+    }
+ 
+    .btn:hover {
+      background: #2c5d8a;
+    }
+ 
+    .danger {
+      background: #dc2626;
+    }
+ 
+    .danger:hover {
+      background: #b91c1c;
+    }
+ 
+    .secondary {
+      background: #6b7280;
+    }
+ 
+    .message {
+      margin-top: 16px;
+      color: #dc2626;
+    }
+  </style>
+</head>
+ 
+<body>
+  <div class="container">
+    <h1>Edit Name</h1>
+    <hr>
+ 
+    <form id="editForm">
+      <p class="info">ID: <span id="recordId"></span></p>
+ 
+      <label for="name">Nome</label>
+      <input type="text" id="name" required>
+ 
+      <p class="info">Criado em: <span id="createdAt"></span></p>
+      <p class="info">Atualizado em: <span id="updatedAt"></span></p>
+ 
+      <button type="submit" class="btn">Guardar edição</button>
+      <button type="button" class="btn danger" onclick="deleteName()">Remover registo</button>
+      <a href="names.html" class="btn secondary">Voltar</a>
+ 
+      <p id="message" class="message"></p>
+    </form>
+  </div>
+ 
+  <script>
+    const API_URL = 'http://localhost:4001/v1/names';
+ 
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+ 
+    function isTokenValid(token) {
+      if (!token) return false;
+ 
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const now = Date.now();
+ 
+        if (payload.expires && payload.expires < now) return false;
+        if (payload.exp && payload.exp * 1000 < now) return false;
+ 
+        return true;
+      } catch {
+        return false;
+      }
+    }
+ 
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('email');
+      window.location.href = 'login.html';
+    }
+ 
+    function checkAuth() {
+      const token = localStorage.getItem('token');
+ 
+      if (!isTokenValid(token)) {
+        logout();
+      }
+ 
+      return token;
+    }
+ 
+    async function loadName() {
+      const token = checkAuth();
+      const message = document.getElementById('message');
+ 
+      if (!id) {
+        message.textContent = 'ID do registo não encontrado.';
+        return;
+      }
+ 
+      try {
+        const response = await fetch(`${API_URL}/${id}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+ 
+        if (!response.ok) {
+          throw new Error('Erro ao carregar registo.');
+        }
+ 
+        const item = await response.json();
+ 
+        document.getElementById('recordId').textContent = item.id;
+        document.getElementById('name').value = item.name || '';
+        document.getElementById('createdAt').textContent = item.created_at || '';
+        document.getElementById('updatedAt').textContent = item.updated_at || '';
+ 
+      } catch (error) {
+        message.textContent = error.message;
+      }
+    }
+ 
+    document.getElementById('editForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+ 
+      const token = checkAuth();
+      const name = document.getElementById('name').value;
+      const message = document.getElementById('message');
+ 
+      try {
+        const response = await fetch(`${API_URL}/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ name: name })
+        });
+ 
+        if (response.status === 200) {
+          window.location.href = 'names.html';
+        } else {
+          message.textContent = 'Erro ao atualizar registo.';
+        }
+ 
+      } catch {
+        message.textContent = 'Não foi possível ligar ao servidor.';
+      }
+    });
+ 
+    async function deleteName() {
+      const token = checkAuth();
+      const message = document.getElementById('message');
+ 
+      const confirmDelete = confirm('Tem a certeza que pretende remover este registo?');
+ 
+      if (!confirmDelete) return;
+ 
+      try {
+        const response = await fetch(`${API_URL}/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+ 
+        if (response.status === 204) {
+          window.location.href = 'names.html';
+        } else {
+          message.textContent = 'Erro ao remover registo.';
+        }
+ 
+      } catch {
+        message.textContent = 'Não foi possível ligar ao servidor.';
+      }
+    }
+ 
+    loadName();
+  </script>
+</body>
+</html>
+ 
+
+Front-end - edit file: names-create.html
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Name</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+ 
+    .container {
+      max-width: 600px;
+      margin: 60px auto;
+      background: white;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+ 
+    h1 {
+      color: #1e3a5f;
+      margin-top: 0;
+    }
+ 
+    hr {
+      border: none;
+      height: 3px;
+      width: 60px;
+      background: #3b82f6;
+      margin: 0 0 24px 0;
+      border-radius: 999px;
+    }
+ 
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+ 
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+ 
+    .btn {
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: none;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: bold;
+      background: #1e3a5f;
+      color: white;
+      display: inline-block;
+    }
+ 
+    .btn:hover {
+      background: #2c5d8a;
+    }
+ 
+    .secondary {
+      background: #6b7280;
+    }
+ 
+    .message {
+      margin-top: 16px;
+      color: #dc2626;
+    }
+  </style>
+</head>
+ 
+<body>
+  <div class="container">
+    <h1>Create Name</h1>
+    <hr>
+ 
+    <form id="createForm">
+      <label for="name">Nome</label>
+      <input type="text" id="name" required>
+ 
+      <label for="email">Email</label>
+      <input type="text" id="email" required>
+ 
+      <button type="submit" class="btn">Guardar</button>
+      <a href="names.html" class="btn secondary">Voltar</a>
+ 
+      <p id="message" class="message"></p>
+    </form>
+  </div>
+ 
+  <script>
+    const API_URL = 'http://localhost:4001/v1/names';
+ 
+    function isTokenValid(token) {
+      if (!token) return false;
+ 
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const now = Date.now();
+ 
+        if (payload.expires && payload.expires < now) return false;
+        if (payload.exp && payload.exp * 1000 < now) return false;
+ 
+        return true;
+      } catch {
+        return false;
+      }
+    }
+ 
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('email');
+      window.location.href = 'login.html';
+    }
+ 
+    function checkAuth() {
+      const token = localStorage.getItem('token');
+ 
+      if (!isTokenValid(token)) {
+        logout();
+      }
+ 
+      return token;
+    }
+ 
+    document.getElementById('createForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+ 
+      const token = checkAuth();
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const message = document.getElementById('message');
+ 
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ name: name, email: email })
+        });
+ 
+        if (response.status === 201) {
+          window.location.href = 'names.html';
+        } else {
+          message.textContent = 'Erro ao criar registo.';
+        }
+ 
+      } catch {
+        message.textContent = 'Não foi possível ligar ao servidor.';
+      }
+    });
+ 
+    checkAuth();
+  </script>
+</body>
+</html>
+ 
+Front-end - edit names-file.html
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Name</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+ 
+    .container {
+      max-width: 600px;
+      margin: 60px auto;
+      background: white;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+ 
+    h1 {
+      color: #1e3a5f;
+      margin-top: 0;
+    }
+ 
+    hr {
+      border: none;
+      height: 3px;
+      width: 60px;
+      background: #3b82f6;
+      margin: 0 0 24px 0;
+      border-radius: 999px;
+    }
+ 
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+ 
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+ 
+    .info {
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 18px;
+    }
+ 
+    .btn {
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: none;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: bold;
+      background: #1e3a5f;
+      color: white;
+      display: inline-block;
+    }
+ 
+    .btn:hover {
+      background: #2c5d8a;
+    }
+ 
+    .danger {
+      background: #dc2626;
+    }
+ 
+    .danger:hover {
+      background: #b91c1c;
+    }
+ 
+    .secondary {
+      background: #6b7280;
+    }
+ 
+    .message {
+      margin-top: 16px;
+      color: #dc2626;
+    }
+  </style>
+</head>
+ 
+<body>
+  <div class="container">
+    <h1>Edit Name</h1>
+    <hr>
+ 
+    <form id="editForm">
+      <p class="info">ID: <span id="recordId"></span></p>
+ 
+      <label for="name">Nome</label>
+      <input type="text" id="name" required>
+ 
+      <label for="name">Email</label>
+      <input type="text" id="email" required>
+ 
+      <p class="info">Criado em: <span id="createdAt"></span></p>
+      <p class="info">Atualizado em: <span id="updatedAt"></span></p>
+ 
+      <button type="submit" class="btn">Guardar edição</button>
+      <button type="button" class="btn danger" onclick="deleteName()">Remover registo</button>
+      <a href="names.html" class="btn secondary">Voltar</a>
+ 
+      <p id="message" class="message"></p>
+    </form>
+  </div>
+ 
+  <script>
+    const API_URL = 'http://localhost:4001/v1/names';
+ 
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+ 
+    function isTokenValid(token) {
+      if (!token) return false;
+ 
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const now = Date.now();
+ 
+        if (payload.expires && payload.expires < now) return false;
+        if (payload.exp && payload.exp * 1000 < now) return false;
+ 
+        return true;
+      } catch {
+        return false;
+      }
+    }
+ 
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('email');
+      window.location.href = 'login.html';
+    }
+ 
+    function checkAuth() {
+      const token = localStorage.getItem('token');
+ 
+      if (!isTokenValid(token)) {
+        logout();
+      }
+ 
+      return token;
+    }
+ 
+    async function loadName() {
+      const token = checkAuth();
+      const message = document.getElementById('message');
+ 
+      if (!id) {
+        message.textContent = 'ID do registo não encontrado.';
+        return;
+      }
+ 
+      try {
+        const response = await fetch(`${API_URL}/${id}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+ 
+        if (!response.ok) {
+          throw new Error('Erro ao carregar registo.');
+        }
+ 
+        const item = await response.json();
+ 
+        document.getElementById('recordId').textContent = item.id;
+        document.getElementById('name').value = item.name || '';
+        document.getElementById('email').value = item.email || '';
+        document.getElementById('createdAt').textContent = item.created_at || '';
+        document.getElementById('updatedAt').textContent = item.updated_at || '';
+ 
+      } catch (error) {
+        message.textContent = error.message;
+      }
+    }
+ 
+    document.getElementById('editForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+ 
+      const token = checkAuth();
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const message = document.getElementById('message');
+ 
+      try {
+        const response = await fetch(`${API_URL}/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ name: name, email: email })
+        });
+ 
+        if (response.status === 200) {
+          window.location.href = 'names.html';
+        } else {
+          message.textContent = 'Erro ao atualizar registo.';
+        }
+ 
+      } catch {
+        message.textContent = 'Não foi possível ligar ao servidor.';
+      }
+    });
+ 
+    async function deleteName() {
+      const token = checkAuth();
+      const message = document.getElementById('message');
+ 
+      const confirmDelete = confirm('Tem a certeza que pretende remover este registo?');
+ 
+      if (!confirmDelete) return;
+ 
+      try {
+        const response = await fetch(`${API_URL}/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+ 
+        if (response.status === 204) {
+          window.location.href = 'names.html';
+        } else {
+          message.textContent = 'Erro ao remover registo.';
+        }
+ 
+      } catch {
+        message.textContent = 'Não foi possível ligar ao servidor.';
+      }
+    }
+ 
+    loadName();
+  </script>
+</body>
+</html>
+ 
+
+exports.up = (knex) => knex.schema.alterTable('names', (t) => {
+  t.string('email', 100).unique();
+  t.text('pass')
+});
+ 
+exports.down = (knex) => knex.schema.alterTable('names', (t) => {
+  t.dropColumn('email');
+  t.dropColumn('pass');
+});
+ 
+const moment = require('moment');
+const bcryptUp = require('bcrypt');
+const setDate = moment().format('YYYY-MM-DD hh:mm:ss');
+ 
+ 
+ 
+exports.seed = async (knex) => {
+ 
+  const demoPass = await bcryptUp.hash('123456', 10);
+  
+  const data = [
+    {
+      name: 'Pedro Emanuel Cardoso de Sousa',
+      email: 'psousa@gmail.com',
+      pass: demoPass,
+      created_at: setDate,
+    },
+    {
+      name: 'Ana Isabel Araújo Mesquita da Costa',
+      email: 'ana@gmail.com',
+      pass: demoPass,
+      created_at: setDate,
+    },
+    {
+      name: 'Margarida',
+      email: 'margarida@gmail.com',
+      pass: demoPass,
+      created_at: setDate,
+    },
+    {
+      name: 'Francisco',
+      email: 'francisco@gmail.com',
+      pass: demoPass,
+      created_at: setDate,
+    },
+  ];
+ 
+  return Promise.all(data.map(async (d) => {
+    const rows = await knex('names').select().where('name', d.name);
+    if (rows.length === 0) {
+      await knex('names').insert(d);
+    }
+    return true;
+  }));
+};
+ 
+ 
+const express = require('express');
+ 
+module.exports = (app) => {
+  app.use('/auths', app.routes.auths);
+  
+  const standardRouter = express.Router();
+  standardRouter.use('/names', app.routes.names);
+  standardRouter.use('/contactstypes', app.routes.contacts_types);
+  standardRouter.use('/skills', app.routes.skills);
+ 
+  app.use('/v1', app.config.passport.authenticate(), standardRouter);
+};
+ 
+ 
+const passport = require('passport');
+const passportJwt = require('passport-jwt');
+const config = require('../config');
+ 
+const secret = 'ERSC202526';
+ 
+const { Strategy, ExtractJwt } = passportJwt;
+ 
+module.exports = (app) => {
+  const params = {
+    secretOrKey: secret,
+    jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+  };
+ 
+  const strategy = new Strategy(params, (payload, done) => {
+    if (new Date() >= payload.expires) done(null, false);
+ 
+    app.services.name.findByField({ email: payload.email })
+      .then((user) => {
+        if (user) done(null, { ...payload });
+        else done(null, false);
+      }).catch((err) => done(err, false));
+  });
+ 
+  passport.use(strategy);
+ 
+  return { authenticate: () => passport.authenticate('jwt', { session: false }) };
+};
+ 
+ 
+const express = require('express');
+const jwt = require('jwt-simple');
+const jsonwebtoken = require('jsonwebtoken');
+const bcryptUp = require('bcrypt');
+// const bcrypt = require('bcrypt-nodejs');
+const { body, validationResult } = require('express-validator');
+const moment = require('moment');
+const AuthenticationError = require('../errors/authenticationError');
+const config = require('../config');
+ 
+const secret = 'ERSC202526';
+ 
+module.exports = (app) => {
+  const router = express.Router();
+ 
+  router.post('/signin', (req, res, next) => {
+    app.services.name.findByField({ email: req.body.email })
+      .then(async (user) => {
+        if (bcryptUp.compareSync(req.body.pass, user.pass)) {
+          const payload = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            expires: Date.now() + (1000 * 60 * 60), // expire: Date.now() + (1000 * 60 * 60) - 1 hour
+          };
+          const token = jwt.encode(payload, secret);
+          res.status(200).json({ token });
+        } else {
+          throw new AuthenticationError('Autentication Error');
+        }
+      }).catch((err) => next(err));
+  });
+ 
+  return router;
+};
+ 
+ 
+module.exports = function authenticationError(message) {
+  this.name = 'authenticationError';
+  this.message = message;
+};
+ 
+ 
+const findByField = async (filter) => {
+    const result = await app.db('names').select('*').where(filter).first();
+    return result;
+  };
+ 
+const cors = require('cors');
+ 
+const app = require('express')();
+app.use(cors({ origin: '*' }));
+ 
+
+
