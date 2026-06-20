@@ -2,28 +2,40 @@ const ValidationError = require('../errors/validationError');
 const moment = require('moment');
 
 // Estados de reserva:
-//   ativa      -> reserva criada pelo cliente (livro fica 'reservado')
-//   aceite     -> bibliotecario/admin aceitou (livro continua ocupado)
-//   terminada  -> entrega/devolução concluída (livro volta a 'disponivel')
-//   cancelada  -> cliente cancelou (livro volta a 'disponivel')
-const DEVOLVE_LIVRO = ['cancelada', 'terminada'];
+//   ativa      -> reserva criada pelo cliente (ocupa uma cópia do livro)
+//   aceite     -> bibliotecario/admin aceitou (continua a ocupar uma cópia)
+//   terminada  -> entrega/devolução concluída (liberta a cópia)
+//   cancelada  -> cliente cancelou (liberta a cópia)
+//
+// A disponibilidade do livro é calculada (quantidade - cópias ocupadas),
+// pelo que não é necessário alterar o estado do livro a cada reserva.
 const OCUPA_LIVRO = ['ativa', 'aceite'];
 
 const isStaff = (token) => token.role === 'bibliotecario' || token.role === 'admin';
 
 module.exports = (app) => {
 
+  // Lista com o nome do cliente e o título do livro (via join).
+  const baseQuery = () => app.db('reservas')
+    .leftJoin('utilizadores', 'reservas.utilizador_id', 'utilizadores.id')
+    .leftJoin('livros', 'reservas.livro_id', 'livros.id')
+    .select(
+      'reservas.*',
+      'utilizadores.nome as utilizador_nome',
+      'livros.titulo as livro_titulo',
+    );
+
   const findAll = async (token) => {
     // Bibliotecario/Admin veem todas as reservas em curso (ativas e aceites).
     if (isStaff(token)) {
-      return app.db('reservas').select('*').whereIn('estado', OCUPA_LIVRO);
+      return baseQuery().whereIn('reservas.estado', OCUPA_LIVRO);
     }
     // Cliente vê apenas as suas reservas.
-    return app.db('reservas').select('*').where('utilizador_id', token.id);
+    return baseQuery().where('reservas.utilizador_id', token.id);
   };
 
   const findOne = async (id, token) => {
-    const result = await app.db('reservas').select('*').where('id', id).first();
+    const result = await baseQuery().where('reservas.id', id).first();
     if (result && !isStaff(token) && result.utilizador_id != token.id) {
       throw new ValidationError('Não tem permissão para consultar');
     }
@@ -35,12 +47,27 @@ module.exports = (app) => {
     return result;
   };
 
+  // Nº de cópias ocupadas de um livro (reservas em curso).
+  const ocupadasDoLivro = async (livroId) => {
+    const row = await app.db('reservas')
+      .where('livro_id', livroId)
+      .whereIn('estado', OCUPA_LIVRO)
+      .count('* as ocupadas')
+      .first();
+    return Number(row.ocupadas);
+  };
+
   const save = async (dataset, token) => {
     if (!dataset.livro_id) throw new ValidationError('O campo [Livro Id] é obrigatório!');
 
     const livro = await app.db('livros').where('id', dataset.livro_id).first();
     if (!livro) throw new ValidationError('Livro não encontrado!');
-    if (livro.estado !== 'disponivel') throw new ValidationError('Livro não está disponível!');
+
+    const ocupadas = await ocupadasDoLivro(dataset.livro_id);
+    const disponiveis = (livro.quantidade || 0) - ocupadas;
+    if (livro.estado !== 'disponivel' || disponiveis <= 0) {
+      throw new ValidationError('Livro não está disponível!');
+    }
 
     const newDataset = {
       utilizador_id: token.id, // utilizador_id vem sempre do token
@@ -49,9 +76,6 @@ module.exports = (app) => {
       data_reserva: moment().format("YYYY-MM-DD HH:mm:ss"),
     };
     const result = await app.db('reservas').insert(newDataset, '*');
-
-    await app.db('livros').where('id', dataset.livro_id).update({ estado: 'reservado' });
-
     return result;
   };
 
@@ -66,14 +90,6 @@ module.exports = (app) => {
 
     const newDataset = { ...dataset };
     const result = await app.db('reservas').where('id', id).update(newDataset, '*');
-
-    // Se a transição leva a um estado que liberta o livro, repor 'disponivel'.
-    if (newDataset.estado
-        && DEVOLVE_LIVRO.includes(newDataset.estado)
-        && !DEVOLVE_LIVRO.includes(reserva.estado)) {
-      await app.db('livros').where('id', reserva.livro_id).update({ estado: 'disponivel' });
-    }
-
     return result;
   };
 
@@ -83,11 +99,6 @@ module.exports = (app) => {
 
     if (!isStaff(token) && reserva.utilizador_id != token.id) {
       throw new ValidationError('Não tem permissão para remover');
-    }
-
-    // Se a reserva ainda ocupava o livro, devolvê-lo ao catálogo.
-    if (OCUPA_LIVRO.includes(reserva.estado)) {
-      await app.db('livros').where('id', reserva.livro_id).update({ estado: 'disponivel' });
     }
 
     await app.db('reservas').where('id', id).del();

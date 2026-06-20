@@ -40,10 +40,12 @@ MVC simplificado, mantido tal como o projeto original:
 ### Esquema da base de dados
 
 - **utilizadores**: `id`, `nome`, `email` (unique), `password`, `role` _(novo)_, `criado_em`.
-- **livros**: `id`, `titulo`, `autor`, `isbn` (unique), `estado` (default `disponivel`), `criado_em`.
+- **livros**: `id`, `titulo`, `autor`, `isbn` (unique), `estado` (`disponivel`|`indisponivel`), `quantidade` _(novo, total de cópias)_, `criado_em`.
 - **reservas**: `id`, `utilizador_id` (FK), `livro_id` (FK), `data_reserva`, `estado` (default `ativa`).
 
-A coluna `role` foi adicionada por uma **migration nova de _alter table_** (`202606200900_alter_table_utilizadores_add_role.js`) — a migration original de criação **não** foi alterada.
+Colunas adicionadas por **migrations novas de _alter table_** (as migrations originais de criação **não** foram alteradas):
+- `202606200900_alter_table_utilizadores_add_role.js` — adiciona `role`.
+- `202606200910_alter_table_livros_add_quantidade.js` — adiciona `quantidade`.
 
 ---
 
@@ -115,7 +117,7 @@ Utilizadores criados pela seed (password **`123456`** em todos):
 | POST   | `/v1/livros`                  | bibliotecario/admin | Criar livro. |
 | PUT    | `/v1/livros/:id`              | bibliotecario/admin | Editar livro. |
 | DELETE | `/v1/livros/:id`              | bibliotecario/admin | Eliminar livro. |
-| GET    | `/v1/reservas`                | autenticado | Cliente: as suas reservas. Bibliotecario/admin: todas as reservas em curso (`ativa`/`aceite`). |
+| GET    | `/v1/reservas`                | autenticado | Cliente: as suas reservas. Bibliotecario/admin: todas as reservas em curso (`ativa`/`aceite`). Inclui `utilizador_nome` e `livro_titulo`. |
 | GET    | `/v1/reservas/:id`            | autenticado | Cliente só as suas; staff qualquer uma. |
 | POST   | `/v1/reservas`                | autenticado | Criar reserva. Body `{ livro_id }` (o `utilizador_id` vem do token). |
 | PUT    | `/v1/reservas/:id`            | autenticado | Mudar estado (`aceite`, `terminada`, `cancelada`). |
@@ -136,26 +138,28 @@ O helper `requireRole(...roles)` (em `src/config/roles.js`) valida `req.user.rol
 
 ## Regras de negócio
 
-### Estados do livro
+### Estados do livro e stock
 
-- `disponivel` → pode ser reservado.
-- `reservado` → ocupado por uma reserva em curso.
+- Cada livro tem uma **quantidade** total de cópias (`quantidade`) e um **estado manual** (`disponivel`/`indisponivel`).
+- As cópias **ocupadas** correspondem às reservas em curso (`ativa`/`aceite`) desse livro.
+- **Cópias livres** = `quantidade − ocupadas` (calculado, não armazenado).
+- Um livro é **efetivamente disponível** quando `estado === 'disponivel'` **e** há cópias livres.
+- **Cliente** só vê `disponivel`/`indisponivel`; **bibliotecário/admin** veem o stock (`livres / total`) e o estado manual.
 
 ### Estados da reserva
 
-| Estado      | Significado | Efeito no livro |
-|-------------|-------------|-----------------|
-| `ativa`     | Reserva criada pelo cliente. | Livro passa a `reservado`. |
-| `aceite`    | Bibliotecario/admin aceitou. | Livro continua ocupado. |
-| `terminada` | Entrega/devolução concluída. | Livro volta a `disponivel`. |
-| `cancelada` | Cliente cancelou. | Livro volta a `disponivel`. |
+| Estado      | Significado | Efeito nas cópias |
+|-------------|-------------|-------------------|
+| `ativa`     | Reserva criada pelo cliente. | Ocupa uma cópia. |
+| `aceite`    | Bibliotecario/admin aceitou. | Continua a ocupar uma cópia. |
+| `terminada` | Entrega/devolução concluída. | Liberta a cópia. |
+| `cancelada` | Cliente cancelou. | Liberta a cópia. |
 
-Regras aplicadas no `service` de reservas:
+Regras aplicadas no `service`:
 
-- **Criar:** o livro tem de existir e estar `disponivel`; passa a `reservado`.
-- **Cancelar/terminar:** ao transitar para `cancelada` ou `terminada`, o livro volta a `disponivel`.
-- **Apagar:** se a reserva ainda ocupava o livro (`ativa`/`aceite`), o livro é devolvido ao catálogo.
-- **Filtragem por role:** o cliente só vê/altera as suas reservas; bibliotecario/admin veem e gerem todas.
+- **Criar reserva:** o livro tem de existir, estar com `estado = disponivel` e ter pelo menos uma cópia livre.
+- **Disponibilidade calculada:** como as cópias livres derivam das reservas em curso, o `estado` do livro **não** é alterado a cada reserva (modelo mais simples e sem risco de dessincronização).
+- **Filtragem por role:** o cliente só vê/altera as suas reservas; bibliotecario/admin veem e gerem todas. A lista de reservas inclui o **nome do cliente** e o **título do livro** (via `join`).
 
 ---
 
@@ -173,21 +177,22 @@ Como **não existe envio de email real**, o fluxo é feito com um token devolvid
 
 ## Frontend (páginas)
 
-Localização: **`PWBiblioteca/Frontend/`**. Estilo replicado do `Exemplo.txt` (paleta navy/azul, cartões brancos arredondados, sidebar de 260px, tabelas com cabeçalho `#eef4fa`). Branding: **“Biblioteca / Gestão de Biblioteca”**.
+Localização: **`PWBiblioteca/Frontend/`**. Tema visual em **castanhos e cinzentos** com **fundo de biblioteca** e tipografia _serif_ nos títulos, mantendo a estrutura do `Exemplo.txt` (sidebar de 264px, topbar, cartões, tabelas). Estilos partilhados em **`css/style.css`** (linkado em todas as páginas) para um look coerente e único. Branding: **"Biblioteca / Gestão de Biblioteca"**.
 
 | Ficheiro | Acesso | Descrição |
 |----------|--------|-----------|
 | `login.html` | público | Autenticação (corrige o bug do `Exemplo.txt`: envia `password`, não `pass`). Links para registo e recuperação. |
 | `register.html` | público | Criar conta. |
-| `forgot-password.html` | público | Pede o token de reset e mostra-o. |
+| `forgot-password.html` | público | Pede o token de reset; mostra "Email enviado" e o token por baixo. |
 | `reset-password.html` | público | Define a nova password (pré-preenche o token do `?token=`). |
 | `dashboard.html` | privado | Cartões/menu consoante o role. |
-| `livros.html` | privado | Catálogo. Cliente reserva; bibliotecario/admin editam/eliminam + `CREATE`. |
-| `livros-create.html` | bibliotecario/admin | Criar livro (`titulo`, `autor`, `isbn`, `estado`). |
-| `livros-edit.html` | bibliotecario/admin | Editar/eliminar livro. |
-| `reservas.html` | privado | Cliente: as suas reservas + cancelar. Bibliotecario/admin: todas as ativas + aceitar/terminar. |
+| `livros.html` | privado | Catálogo. Cliente: vê disponível/indisponível e reserva. Bibliotecario/admin: veem stock (`livres/total`) e estado, editam/eliminam + `CREATE`. |
+| `livros-create.html` | bibliotecario/admin | Criar livro (`titulo`, `autor`, `isbn`, `quantidade`, `estado`). |
+| `livros-edit.html` | bibliotecario/admin | Editar/eliminar livro e gerir o stock. |
+| `reservas.html` | privado | Cliente: as suas reservas + cancelar. Bibliotecario/admin: todas as ativas, com **nome do cliente**, + aceitar/terminar. |
 | `utilizadores.html` | admin | Listar contas, editar/eliminar, promover/despromover. |
 | `utilizadores-edit.html` | admin | Editar/eliminar uma conta. |
+| `css/style.css` | — | Tema partilhado (paleta castanho/cinzento, fundo de biblioteca, componentes). |
 | `js/config.js` | — | Helpers partilhados: `API_BASE` (URL único), `isTokenValid`, `saveSession`, `checkAuth`, `getRole`, `isStaff`, `isAdmin`, `authHeaders`, `renderSidebar`. |
 
 ### Autenticação no cliente
@@ -204,15 +209,16 @@ Localização: **`PWBiblioteca/Frontend/`**. Estilo replicado do `Exemplo.txt` (
 ### Backend
 
 - **CORS** adicionado em `app.js` (`app.use(cors({ origin: '*' }))`).
-- **Migration nova** `202606200900_alter_table_utilizadores_add_role.js` (adiciona `role`, default `cliente`).
-- **Seed** `03.1_utilizadores.js` atualizada: cria admin + bibliotecário + cliente (password `123456`, idempotente).
+- **Migrations novas**: `role` em `utilizadores` e `quantidade` em `livros` (migrations originais intactas).
+- **Seeds** atualizadas: utilizadores com 3 roles (password `123456`) e livros com `quantidade` de stock; ambas idempotentes.
 - **JWT com role**: payload do `signin` inclui `role` (além de `id`, `email`, `expires`).
 - **Novas rotas de auth**: `signup`, `forgot-password`, `reset-password`.
 - **Service `utilizador`**: `register`, `updatePassword`, `setRole` (promover/despromover).
+- **Service `livro`**: disponibilidade calculada por stock (`quantidade − reservas em curso`); `estado` passa a `disponivel`/`indisponivel`.
 - **Helper `requireRole`** (`src/config/roles.js`) + erro `ForbiddenError` (403).
-- **Livros**: criar/editar/eliminar restritos a bibliotecario/admin.
-- **Reservas**: lógica por role (cliente vê/gere as suas; staff vê/gere todas) e transições de estado que devolvem o livro.
-- **Rotas de utilizadores** (admin): listar/editar/eliminar/promover/despromover, registadas em `config/router.js`.
+- **Livros**: criar/editar/eliminar restritos a bibliotecario/admin; campo `quantidade`.
+- **Reservas**: lógica por role; verificação de cópias livres ao reservar; listagem com `join` (nome do cliente + título do livro).
+- **Rotas de utilizadores** (admin): listar/editar/eliminar/promover/despromover.
 - Correção de um bug pré-existente no `passport.js` (tokens expirados deixavam de ser aceites — faltava o `return`).
 
 ### Frontend
@@ -223,8 +229,11 @@ Localização: **`PWBiblioteca/Frontend/`**. Estilo replicado do `Exemplo.txt` (
 
 ## Decisões tomadas
 
-- **Estados extra da reserva** (`aceite`, `terminada`) para suportar o fluxo “aceitar/terminar” do staff, mantendo `ativa`/`cancelada` do original. `cancelada` e `terminada` libertam o livro.
-- **Bibliotecário/admin veem reservas `ativa` + `aceite`** (reservas em curso), para um fluxo de gestão utilizável.
-- **`forgot-password` devolve o token na resposta** por não existir email real (documentado na própria página e aqui).
-- **Promoção/despromoção** restrita a `cliente ↔ bibliotecario` (não cria admins arbitrariamente).
-- **`js/config.js` partilhado** mantém a base URL num único local e evita duplicação dos helpers de auth, sem introduzir frameworks nem build.
+- **Stock por quantidade**: cada livro tem `quantidade` (total de cópias). A disponibilidade é **calculada** (cópias livres = total − reservas em curso), evitando manter `estado` sincronizado a cada reserva. O `estado` passa a ser um interruptor manual `disponivel`/`indisponivel` (substitui o antigo `reservado`).
+- **Visibilidade do stock**: bibliotecário/admin veem `livres / total`; o cliente vê apenas `disponivel`/`indisponivel`.
+- **Reservas com nome do cliente**: a listagem faz `join` com `utilizadores` e `livros` para mostrar o nome do cliente e o título do livro (em vez de IDs).
+- **Estados extra da reserva** (`aceite`, `terminada`) para suportar o fluxo "aceitar/terminar" do staff, mantendo `ativa`/`cancelada`.
+- **`forgot-password`** devolve o token na resposta (não há email real); a página mostra "Email enviado" e o token por baixo.
+- **Promoção/despromoção** restrita a `cliente ↔ bibliotecario`.
+- **Tema visual** em castanho/cinzento com fundo de biblioteca, centralizado em `css/style.css` partilhado (mais coerente e fácil de manter que CSS repetido por página). A imagem de fundo é carregada de um URL público (Unsplash), pelo que requer internet no browser; sem ela, o fundo escuro de _fallback_ mantém a leitura.
+- **`js/config.js` partilhado** mantém a base URL num único local e os helpers de auth/role, sem frameworks nem build.

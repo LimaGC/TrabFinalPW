@@ -2,30 +2,15 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Editar Livro - Biblioteca</title>
-  <style>
-    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f4f7fb; color: #1f2937; }
-    .container { max-width: 600px; margin: 60px auto; background: white; padding: 32px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-    h1 { color: #1e3a5f; margin-top: 0; }
-    hr { border: none; height: 3px; width: 60px; background: #3b82f6; margin: 0 0 24px 0; border-radius: 999px; }
-    label { display: block; margin-bottom: 8px; font-weight: bold; }
-    input, select { width: 100%; padding: 12px 14px; margin-bottom: 18px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
-    input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
-    .info { color: #6b7280; font-size: 14px; margin-bottom: 18px; }
-    .btn { padding: 12px 18px; border-radius: 10px; border: none; text-decoration: none; cursor: pointer; font-weight: bold; background: #1e3a5f; color: white; display: inline-block; }
-    .btn:hover { background: #2c5d8a; }
-    .danger { background: #dc2626; }
-    .danger:hover { background: #b91c1c; }
-    .secondary { background: #6b7280; }
-    .secondary:hover { background: #4b5563; }
-    .message { margin-top: 16px; color: #dc2626; }
-  </style>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
   <div class="container">
     <h1>Editar Livro</h1>
-    <hr>
+    <hr class="rule">
 
     <form id="editForm">
       <p class="info">ID: <span id="recordId"></span></p>
@@ -39,11 +24,16 @@
       <label for="isbn">ISBN</label>
       <input type="text" id="isbn" required>
 
+      <label for="quantidade">Quantidade (cópias em stock)</label>
+      <input type="number" id="quantidade" min="0" required>
+
       <label for="estado">Estado</label>
       <select id="estado">
         <option value="disponivel">disponivel</option>
-        <option value="reservado">reservado</option>
+        <option value="indisponivel">indisponivel</option>
       </select>
+
+      <p class="info" id="stockInfo"></p>
 
       <button type="submit" class="btn">Guardar edição</button>
       <button type="button" class="btn danger" onclick="eliminar()">Remover livro</button>
@@ -79,7 +69,10 @@
         document.getElementById('titulo').value = item.titulo || '';
         document.getElementById('autor').value = item.autor || '';
         document.getElementById('isbn').value = item.isbn || '';
+        document.getElementById('quantidade').value = item.quantidade;
         document.getElementById('estado').value = item.estado || 'disponivel';
+        document.getElementById('stockInfo').textContent =
+          `Cópias livres: ${item.disponiveis} de ${item.quantidade} (em reserva: ${item.ocupadas}).`;
       } catch (error) {
         message.textContent = error.message;
       }
@@ -93,6 +86,7 @@
         titulo: document.getElementById('titulo').value,
         autor: document.getElementById('autor').value,
         isbn: document.getElementById('isbn').value,
+        quantidade: Number(document.getElementById('quantidade').value),
         estado: document.getElementById('estado').value,
       };
 
