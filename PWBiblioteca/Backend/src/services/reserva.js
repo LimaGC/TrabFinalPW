@@ -2,14 +2,14 @@ const ValidationError = require('../errors/validationError');
 const moment = require('moment');
 
 // Estados de reserva:
-//   ativa      -> reserva criada pelo cliente (ocupa uma cópia do livro)
-//   aceite     -> bibliotecario/admin aceitou (continua a ocupar uma cópia)
-//   terminada  -> entrega/devolução concluída (liberta a cópia)
-//   cancelada  -> cliente cancelou (liberta a cópia)
+//   pendente    -> criada pelo cliente, à espera de aprovação (ocupa uma cópia)
+//   confirmada  -> aprovada por bibliotecario/admin (continua a ocupar uma cópia)
+//   terminada   -> entrega/devolução concluída (liberta a cópia)
+//   cancelada   -> cancelada pelo cliente (liberta a cópia)
 //
 // A disponibilidade do livro é calculada (quantidade - cópias ocupadas),
 // pelo que não é necessário alterar o estado do livro a cada reserva.
-const OCUPA_LIVRO = ['ativa', 'aceite'];
+const OCUPA_LIVRO = ['pendente', 'confirmada'];
 
 const isStaff = (token) => token.role === 'bibliotecario' || token.role === 'admin';
 
@@ -72,7 +72,7 @@ module.exports = (app) => {
     const newDataset = {
       utilizador_id: token.id, // utilizador_id vem sempre do token
       livro_id: dataset.livro_id,
-      estado: 'ativa',
+      estado: 'pendente', // fica pendente de aprovação até o staff confirmar
       data_reserva: moment().format("YYYY-MM-DD HH:mm:ss"),
     };
     const result = await app.db('reservas').insert(newDataset, '*');
@@ -86,6 +86,11 @@ module.exports = (app) => {
     // Cliente só altera as suas; bibliotecario/admin alteram qualquer uma.
     if (!isStaff(token) && reserva.utilizador_id != token.id) {
       throw new ValidationError('Não tem permissão para atualizar');
+    }
+
+    // O cliente só pode cancelar; aprovar (confirmada) ou terminar é só do staff.
+    if (!isStaff(token) && dataset.estado && dataset.estado !== 'cancelada') {
+      throw new ValidationError('Apenas um bibliotecário ou admin pode aprovar/terminar reservas.');
     }
 
     const newDataset = { ...dataset };

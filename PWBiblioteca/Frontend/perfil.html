@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>O Meu Perfil - Biblioteca</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <main class="content">
+      <section class="topbar">
+        <h1>O Meu Perfil</h1>
+        <p>Atualize os seus dados e a sua password.</p>
+      </section>
+
+      <section class="cards">
+        <!-- Dados pessoais -->
+        <div class="card">
+          <h2>Dados pessoais</h2>
+          <hr class="rule">
+
+          <form id="perfilForm">
+            <p class="info">Role: <span id="roleInfo"></span></p>
+
+            <label for="nome">Nome</label>
+            <input type="text" id="nome" required>
+
+            <label for="email">Email</label>
+            <input type="email" id="email" required>
+
+            <button type="submit" class="btn">Guardar dados</button>
+            <p id="perfilMessage" class="message"></p>
+          </form>
+        </div>
+
+        <!-- Alterar password -->
+        <div class="card">
+          <h2>Alterar password</h2>
+          <hr class="rule">
+
+          <form id="passwordForm">
+            <label for="currentPassword">Password atual</label>
+            <input type="password" id="currentPassword" required>
+
+            <label for="newPassword">Nova password</label>
+            <input type="password" id="newPassword" required>
+
+            <button type="submit" class="btn">Alterar password</button>
+            <p id="passwordMessage" class="message"></p>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script>
+    checkAuth();
+    document.getElementById('sidebar').innerHTML = renderSidebar('perfil.html');
+
+    async function loadPerfil() {
+      const message = document.getElementById('perfilMessage');
+      try {
+        const response = await fetch(`${API_BASE}/v1/perfil`, {
+          method: 'GET',
+          headers: authHeaders(),
+        });
+        if (!response.ok) throw new Error('Erro ao carregar o perfil.');
+
+        const item = await response.json();
+        document.getElementById('roleInfo').textContent = item.role || '';
+        document.getElementById('nome').value = item.nome || '';
+        document.getElementById('email').value = item.email || '';
+      } catch (error) {
+        message.textContent = error.message;
+        message.className = 'message error';
+      }
+    }
+
+    // Guardar dados (nome / email).
+    document.getElementById('perfilForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const message = document.getElementById('perfilMessage');
+      message.textContent = '';
+      message.className = 'message';
+
+      const body = {
+        nome: document.getElementById('nome').value,
+        email: document.getElementById('email').value,
+      };
+
+      try {
+        const response = await fetch(`${API_BASE}/v1/perfil`, {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(body),
+        });
+        const data = await response.json();
+
+        if (response.status === 200) {
+          // Mantém o email do localStorage (e sidebar) em sincronia.
+          localStorage.setItem('email', data.email || body.email);
+          message.textContent = 'Dados atualizados com sucesso.';
+          message.className = 'message success';
+          document.getElementById('sidebar').innerHTML = renderSidebar('perfil.html');
+        } else {
+          message.textContent = data.error || 'Erro ao atualizar os dados.';
+          message.className = 'message error';
+        }
+      } catch {
+        message.textContent = 'Não foi possível ligar ao servidor.';
+        message.className = 'message error';
+      }
+    });
+
+    // Alterar password (atual + nova).
+    document.getElementById('passwordForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const message = document.getElementById('passwordMessage');
+      message.textContent = '';
+      message.className = 'message';
+
+      const body = {
+        currentPassword: document.getElementById('currentPassword').value,
+        newPassword: document.getElementById('newPassword').value,
+      };
+
+      try {
+        const response = await fetch(`${API_BASE}/v1/perfil/password`, {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(body),
+        });
+        const data = await response.json();
+
+        if (response.status === 200) {
+          message.textContent = 'Password alterada com sucesso.';
+          message.className = 'message success';
+          document.getElementById('passwordForm').reset();
+        } else {
+          message.textContent = data.error || 'Erro ao alterar a password.';
+          message.className = 'message error';
+        }
+      } catch {
+        message.textContent = 'Não foi possível ligar ao servidor.';
+        message.className = 'message error';
+      }
+    });
+
+    loadPerfil();
+  </script>
+</body>
+</html>

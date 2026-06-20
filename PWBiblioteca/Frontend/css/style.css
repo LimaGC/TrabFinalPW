@@ -356,6 +356,8 @@ tbody tr:hover { background: rgba(194, 163, 107, 0.08); }
 }
 .badge.disponivel { background: #e3ecd9; color: #43622f; }
 .badge.indisponivel { background: #efd9d4; color: #8a2f23; }
+.badge.pendente { background: #f3e6c8; color: #8a6420; }
+.badge.confirmada { background: #d9e6df; color: #2f6b4f; }
 .badge.ativa { background: #e0e7ef; color: #3a4a63; }
 .badge.aceite { background: #f3e6c8; color: #8a6420; }
 .badge.terminada { background: #e3ecd9; color: #43622f; }

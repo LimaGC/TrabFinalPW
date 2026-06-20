@@ -11,6 +11,7 @@ module.exports = (app) => {
   standardRouter.use('/livros', app.routes.livros);
   standardRouter.use('/reservas', app.routes.reservas);
   standardRouter.use('/utilizadores', app.routes.utilizadores);
+  standardRouter.use('/perfil', app.routes.perfil);
 
   app.use('/v1', app.config.passport.authenticate(), standardRouter);
 };

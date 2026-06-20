@@ -59,13 +59,51 @@ module.exports = (app) => {
     return result;
   };
 
-  // Atualiza apenas a password (com hash). Usado pelo fluxo de reset.
+  // Atualiza o perfil (nome/email). Garante email único. Devolve o registo atualizado.
+  // Usado tanto pelo próprio utilizador (perfil) como pelo admin.
+  const updateProfile = async (id, dataset) => {
+    const data = {};
+    if (dataset.nome !== undefined) {
+      if (!dataset.nome) throw new ValidationError('O campo [Nome] é obrigatório!');
+      data.nome = dataset.nome;
+    }
+    if (dataset.email !== undefined) {
+      if (!dataset.email) throw new ValidationError('O campo [Email] é obrigatório!');
+      const existing = await app.db('utilizadores').where('email', dataset.email).first();
+      if (existing && existing.id != id) {
+        throw new ValidationError('Já existe uma conta com esse email!');
+      }
+      data.email = dataset.email;
+    }
+    await app.db('utilizadores').where('id', id).update(data);
+    return app.db('utilizadores').where('id', id).first();
+  };
+
+  // Atualiza apenas a password (com hash). Usado pelo fluxo de reset (sem validação prévia).
   const updatePassword = async (id, password) => {
     if (!password) throw new ValidationError('O campo [Password] é obrigatório!');
     const result = await app.db('utilizadores')
       .where('id', id)
       .update({ password: bcrypt.hashSync(password, 10) });
     return result;
+  };
+
+  // Alteração de password após login: exige a password atual correta.
+  const changePassword = async (id, currentPassword, newPassword) => {
+    if (!currentPassword) throw new ValidationError('A password atual é obrigatória!');
+    if (!newPassword) throw new ValidationError('A nova password é obrigatória!');
+
+    const user = await app.db('utilizadores').where('id', id).first();
+    if (!user) throw new ValidationError('Utilizador não encontrado!');
+
+    if (!bcrypt.compareSync(currentPassword, user.password)) {
+      throw new ValidationError('A password atual está incorreta!');
+    }
+
+    await app.db('utilizadores')
+      .where('id', id)
+      .update({ password: bcrypt.hashSync(newPassword, 10) });
+    return true;
   };
 
   // Promover/despromover: apenas entre cliente e bibliotecario.
@@ -83,6 +121,7 @@ module.exports = (app) => {
   };
 
   return {
-    findAll, findOne, save, register, update, updatePassword, setRole, remove, findByField, ROLES,
+    findAll, findOne, save, register, update, updateProfile,
+    updatePassword, changePassword, setRole, remove, findByField, ROLES,
   };
 };

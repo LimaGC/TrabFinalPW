@@ -39,12 +39,21 @@
     const staff = isStaff();
     document.getElementById('subtitle').textContent = staff
       ? 'Reservas em curso. Aceite ou termine cada reserva.'
-      : 'As suas reservas. Pode cancelar as que ainda estão ativas.';
+      : 'As suas reservas. Pode cancelar as que ainda estão em curso.';
 
     // Staff vê o nome do cliente; o cliente não precisa dessa coluna.
     document.getElementById('tableHead').innerHTML = staff
       ? '<th>ID</th><th>Livro</th><th>Cliente</th><th>Estado</th><th>Data</th><th>Ações</th>'
       : '<th>ID</th><th>Livro</th><th>Estado</th><th>Data</th><th>Ações</th>';
+
+    // Etiquetas legíveis para cada estado.
+    const ESTADO_LABEL = {
+      pendente: 'pendente de aprovação',
+      confirmada: 'confirmada',
+      terminada: 'terminada',
+      cancelada: 'cancelada',
+    };
+    const estadoLabel = (e) => ESTADO_LABEL[e] || e;
 
     async function mudarEstado(id, estado) {
       const message = document.getElementById('message');
@@ -66,7 +75,8 @@
     }
 
     function acoesCliente(r) {
-      if (r.estado === 'ativa' || r.estado === 'aceite') {
+      // Cliente pode cancelar reservas ainda em curso (pendentes ou confirmadas).
+      if (r.estado === 'pendente' || r.estado === 'confirmada') {
         return `<button class="btn danger" onclick="mudarEstado(${r.id}, 'cancelada')">Cancelar</button>`;
       }
       return '<span class="muted">—</span>';
@@ -74,10 +84,10 @@
 
     function acoesStaff(r) {
       let btns = '';
-      if (r.estado === 'ativa') {
-        btns += `<button class="btn accent" onclick="mudarEstado(${r.id}, 'aceite')">Aceitar</button> `;
+      if (r.estado === 'pendente') {
+        btns += `<button class="btn accent" onclick="mudarEstado(${r.id}, 'confirmada')">Aprovar</button> `;
       }
-      if (r.estado === 'ativa' || r.estado === 'aceite') {
+      if (r.estado === 'pendente' || r.estado === 'confirmada') {
         btns += `<button class="btn" onclick="mudarEstado(${r.id}, 'terminada')">Terminar</button>`;
       }
       return btns || '<span class="muted">—</span>';
@@ -115,7 +125,7 @@
               <td>${r.id}</td>
               <td>${livro}</td>
               <td>${cliente}</td>
-              <td><span class="badge ${r.estado}">${r.estado}</span></td>
+              <td><span class="badge ${r.estado}">${estadoLabel(r.estado)}</span></td>
               <td>${r.data_reserva || ''}</td>
               <td>${acoes}</td>
             `;
@@ -123,7 +133,7 @@
             row.innerHTML = `
               <td>${r.id}</td>
               <td>${livro}</td>
-              <td><span class="badge ${r.estado}">${r.estado}</span></td>
+              <td><span class="badge ${r.estado}">${estadoLabel(r.estado)}</span></td>
               <td>${r.data_reserva || ''}</td>
               <td>${acoes}</td>
             `;

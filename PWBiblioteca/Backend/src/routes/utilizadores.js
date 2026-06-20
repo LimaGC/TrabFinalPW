@@ -31,11 +31,10 @@ module.exports = (app) => {
   // Editar conta (nome / email). Ignora password e role neste endpoint.
   router.put('/:id', async (req, res, next) => {
     try {
-      const dataset = {};
-      if (req.body.nome !== undefined) dataset.nome = req.body.nome;
-      if (req.body.email !== undefined) dataset.email = req.body.email;
-      await app.services.utilizador.update(req.params.id, dataset);
-      const updated = await app.services.utilizador.findOne(req.params.id);
+      const updated = await app.services.utilizador.updateProfile(req.params.id, {
+        nome: req.body.nome,
+        email: req.body.email,
+      });
       return res.status(200).json(semPassword(updated));
     } catch (err) {
       return next(err);

@@ -117,7 +117,7 @@ Utilizadores criados pela seed (password **`123456`** em todos):
 | POST   | `/v1/livros`                  | bibliotecario/admin | Criar livro. |
 | PUT    | `/v1/livros/:id`              | bibliotecario/admin | Editar livro. |
 | DELETE | `/v1/livros/:id`              | bibliotecario/admin | Eliminar livro. |
-| GET    | `/v1/reservas`                | autenticado | Cliente: as suas reservas. Bibliotecario/admin: todas as reservas em curso (`ativa`/`aceite`). Inclui `utilizador_nome` e `livro_titulo`. |
+| GET    | `/v1/reservas`                | autenticado | Cliente: as suas reservas. Bibliotecario/admin: todas as reservas em curso (`pendente`/`confirmada`). Inclui `utilizador_nome` e `livro_titulo`. |
 | GET    | `/v1/reservas/:id`            | autenticado | Cliente só as suas; staff qualquer uma. |
 | POST   | `/v1/reservas`                | autenticado | Criar reserva. Body `{ livro_id }` (o `utilizador_id` vem do token). |
 | PUT    | `/v1/reservas/:id`            | autenticado | Mudar estado (`aceite`, `terminada`, `cancelada`). |
@@ -127,6 +127,9 @@ Utilizadores criados pela seed (password **`123456`** em todos):
 | PUT    | `/v1/utilizadores/:id`        | admin | Editar `nome` / `email`. |
 | PUT    | `/v1/utilizadores/:id/role`   | admin | Promover/despromover (`cliente` ↔ `bibliotecario`). |
 | DELETE | `/v1/utilizadores/:id`        | admin | Eliminar conta. |
+| GET    | `/v1/perfil`                  | autenticado | Dados do **próprio** perfil (sem password). |
+| PUT    | `/v1/perfil`                  | autenticado | Editar o **próprio** perfil (`nome`/`email`). |
+| PUT    | `/v1/perfil/password`         | autenticado | Alterar a própria password. Body `{ currentPassword, newPassword }` (valida a password atual). |
 
 > As rotas legadas (`names`, `skills`, `contactstypes`) mantêm-se intactas.
 
@@ -148,18 +151,21 @@ O helper `requireRole(...roles)` (em `src/config/roles.js`) valida `req.user.rol
 
 ### Estados da reserva
 
-| Estado      | Significado | Efeito nas cópias |
-|-------------|-------------|-------------------|
-| `ativa`     | Reserva criada pelo cliente. | Ocupa uma cópia. |
-| `aceite`    | Bibliotecario/admin aceitou. | Continua a ocupar uma cópia. |
-| `terminada` | Entrega/devolução concluída. | Liberta a cópia. |
-| `cancelada` | Cliente cancelou. | Liberta a cópia. |
+| Estado       | Significado | Efeito nas cópias |
+|--------------|-------------|-------------------|
+| `pendente`   | Criada pelo cliente, **pendente de aprovação**. | Ocupa uma cópia. |
+| `confirmada` | Aprovada por bibliotecario/admin. | Continua a ocupar uma cópia. |
+| `terminada`  | Entrega/devolução concluída. | Liberta a cópia. |
+| `cancelada`  | Cancelada pelo cliente. | Liberta a cópia. |
 
 Regras aplicadas no `service`:
 
-- **Criar reserva:** o livro tem de existir, estar com `estado = disponivel` e ter pelo menos uma cópia livre.
-- **Disponibilidade calculada:** como as cópias livres derivam das reservas em curso, o `estado` do livro **não** é alterado a cada reserva (modelo mais simples e sem risco de dessincronização).
-- **Filtragem por role:** o cliente só vê/altera as suas reservas; bibliotecario/admin veem e gerem todas. A lista de reservas inclui o **nome do cliente** e o **título do livro** (via `join`).
+- **Criar reserva:** o livro tem de existir, estar com `estado = disponivel` e ter pelo menos uma cópia livre. A reserva nasce **`pendente`** (à espera de aprovação).
+- **Aprovar:** só bibliotecário/admin podem passar uma reserva de `pendente` para `confirmada`. O cliente **não** pode auto-aprovar (validado no servidor).
+- **Terminar:** bibliotecário/admin terminam (`terminada`), libertando a cópia.
+- **Cancelar:** o cliente só pode **cancelar** as suas reservas (`cancelada`); libertando a cópia.
+- **Disponibilidade calculada:** as cópias livres derivam das reservas em curso (`pendente`/`confirmada`), pelo que o `estado` do livro não é alterado a cada reserva.
+- **Filtragem por role:** o cliente só vê/altera as suas reservas; bibliotecario/admin veem e gerem todas. A lista inclui o **nome do cliente** e o **título do livro** (via `join`).
 
 ---
 
@@ -189,9 +195,10 @@ Localização: **`PWBiblioteca/Frontend/`**. Tema visual em **castanhos e cinzen
 | `livros.html` | privado | Catálogo. Cliente: vê disponível/indisponível e reserva. Bibliotecario/admin: veem stock (`livres/total`) e estado, editam/eliminam + `CREATE`. |
 | `livros-create.html` | bibliotecario/admin | Criar livro (`titulo`, `autor`, `isbn`, `quantidade`, `estado`). |
 | `livros-edit.html` | bibliotecario/admin | Editar/eliminar livro e gerir o stock. |
-| `reservas.html` | privado | Cliente: as suas reservas + cancelar. Bibliotecario/admin: todas as ativas, com **nome do cliente**, + aceitar/terminar. |
+| `reservas.html` | privado | Cliente: as suas reservas + cancelar. Bibliotecario/admin: todas em curso, com **nome do cliente**, + aprovar/terminar. |
 | `utilizadores.html` | admin | Listar contas, editar/eliminar, promover/despromover. |
 | `utilizadores-edit.html` | admin | Editar/eliminar uma conta. |
+| `perfil.html` | privado | O próprio utilizador edita os seus dados (`nome`/`email`) e altera a password (atual + nova). |
 | `css/style.css` | — | Tema partilhado (paleta castanho/cinzento, fundo de biblioteca, componentes). |
 | `js/config.js` | — | Helpers partilhados: `API_BASE` (URL único), `isTokenValid`, `saveSession`, `checkAuth`, `getRole`, `isStaff`, `isAdmin`, `authHeaders`, `renderSidebar`. |
 
@@ -217,8 +224,9 @@ Localização: **`PWBiblioteca/Frontend/`**. Tema visual em **castanhos e cinzen
 - **Service `livro`**: disponibilidade calculada por stock (`quantidade − reservas em curso`); `estado` passa a `disponivel`/`indisponivel`.
 - **Helper `requireRole`** (`src/config/roles.js`) + erro `ForbiddenError` (403).
 - **Livros**: criar/editar/eliminar restritos a bibliotecario/admin; campo `quantidade`.
-- **Reservas**: lógica por role; verificação de cópias livres ao reservar; listagem com `join` (nome do cliente + título do livro).
+- **Reservas**: fluxo de aprovação (`pendente` → `confirmada` por staff; cliente só cancela); verificação de cópias livres ao reservar; listagem com `join` (nome do cliente + título do livro).
 - **Rotas de utilizadores** (admin): listar/editar/eliminar/promover/despromover.
+- **Perfil self-service** (`src/routes/perfil.js`): `GET/PUT /v1/perfil` (editar nome/email) e `PUT /v1/perfil/password` (alterar password com a password atual). Service: `updateProfile`, `changePassword`.
 - Correção de um bug pré-existente no `passport.js` (tokens expirados deixavam de ser aceites — faltava o `return`).
 
 ### Frontend
@@ -232,7 +240,8 @@ Localização: **`PWBiblioteca/Frontend/`**. Tema visual em **castanhos e cinzen
 - **Stock por quantidade**: cada livro tem `quantidade` (total de cópias). A disponibilidade é **calculada** (cópias livres = total − reservas em curso), evitando manter `estado` sincronizado a cada reserva. O `estado` passa a ser um interruptor manual `disponivel`/`indisponivel` (substitui o antigo `reservado`).
 - **Visibilidade do stock**: bibliotecário/admin veem `livres / total`; o cliente vê apenas `disponivel`/`indisponivel`.
 - **Reservas com nome do cliente**: a listagem faz `join` com `utilizadores` e `livros` para mostrar o nome do cliente e o título do livro (em vez de IDs).
-- **Estados extra da reserva** (`aceite`, `terminada`) para suportar o fluxo "aceitar/terminar" do staff, mantendo `ativa`/`cancelada`.
+- **Aprovação de reservas**: a reserva nasce `pendente` (pendente de aprovação) e só passa a `confirmada` por ação de bibliotecário/admin. O cliente apenas pode cancelar (validado no servidor, não só no UI).
+- **Perfil self-service**: qualquer utilizador edita os seus dados e altera a password (com verificação da password atual) via `/v1/perfil`; o admin continua a gerir todas as contas via `/v1/utilizadores`.
 - **`forgot-password`** devolve o token na resposta (não há email real); a página mostra "Email enviado" e o token por baixo.
 - **Promoção/despromoção** restrita a `cliente ↔ bibliotecario`.
 - **Tema visual** em castanho/cinzento com fundo de biblioteca, centralizado em `css/style.css` partilhado (mais coerente e fácil de manter que CSS repetido por página). A imagem de fundo é carregada de um URL público (Unsplash), pelo que requer internet no browser; sem ela, o fundo escuro de _fallback_ mantém a leitura.

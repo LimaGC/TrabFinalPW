@@ -95,6 +95,7 @@ function renderSidebar(activePage) {
     { href: 'livros.html', label: 'Livros', roles: ['cliente', 'bibliotecario', 'admin'] },
     { href: 'reservas.html', label: 'Reservas', roles: ['cliente', 'bibliotecario', 'admin'] },
     { href: 'utilizadores.html', label: 'Utilizadores', roles: ['admin'] },
+    { href: 'perfil.html', label: 'O Meu Perfil', roles: ['cliente', 'bibliotecario', 'admin'] },
   ];
 
   const links = items

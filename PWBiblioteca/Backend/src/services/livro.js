@@ -1,8 +1,8 @@
 const ValidationError = require('../errors/validationError');
 const moment = require('moment');
 
-// Reservas que ocupam uma cópia do livro.
-const OCUPA_LIVRO = ['ativa', 'aceite'];
+// Reservas que ocupam uma cópia do livro (pendentes de aprovação e confirmadas).
+const OCUPA_LIVRO = ['pendente', 'confirmada'];
 
 module.exports = (app) => {
 
