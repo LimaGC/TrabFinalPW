@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Editar Utilizador - Biblioteca</title>
+  <style>
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f4f7fb; color: #1f2937; }
+    .container { max-width: 600px; margin: 60px auto; background: white; padding: 32px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+    h1 { color: #1e3a5f; margin-top: 0; }
+    hr { border: none; height: 3px; width: 60px; background: #3b82f6; margin: 0 0 24px 0; border-radius: 999px; }
+    label { display: block; margin-bottom: 8px; font-weight: bold; }
+    input { width: 100%; padding: 12px 14px; margin-bottom: 18px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; box-sizing: border-box; }
+    input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+    .info { color: #6b7280; font-size: 14px; margin-bottom: 18px; }
+    .btn { padding: 12px 18px; border-radius: 10px; border: none; text-decoration: none; cursor: pointer; font-weight: bold; background: #1e3a5f; color: white; display: inline-block; }
+    .btn:hover { background: #2c5d8a; }
+    .danger { background: #dc2626; }
+    .danger:hover { background: #b91c1c; }
+    .secondary { background: #6b7280; }
+    .secondary:hover { background: #4b5563; }
+    .message { margin-top: 16px; color: #dc2626; }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Editar Utilizador</h1>
+    <hr>
+
+    <form id="editForm">
+      <p class="info">ID: <span id="recordId"></span></p>
+      <p class="info">Role atual: <span id="roleAtual"></span></p>
+
+      <label for="nome">Nome</label>
+      <input type="text" id="nome" required>
+
+      <label for="email">Email</label>
+      <input type="email" id="email" required>
+
+      <button type="submit" class="btn">Guardar edição</button>
+      <button type="button" class="btn danger" onclick="eliminar()">Eliminar conta</button>
+      <a href="utilizadores.html" class="btn secondary">Voltar</a>
+
+      <p id="message" class="message"></p>
+    </form>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script>
+    checkAuth();
+    if (!isAdmin()) {
+      window.location.href = 'dashboard.html';
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+
+    async function loadUtilizador() {
+      const message = document.getElementById('message');
+      if (!id) { message.textContent = 'ID do utilizador não encontrado.'; return; }
+
+      try {
+        const response = await fetch(`${API_BASE}/v1/utilizadores/${id}`, {
+          method: 'GET',
+          headers: authHeaders(),
+        });
+        if (!response.ok) throw new Error('Erro ao carregar utilizador.');
+
+        const item = await response.json();
+        document.getElementById('recordId').textContent = item.id;
+        document.getElementById('roleAtual').textContent = item.role || '';
+        document.getElementById('nome').value = item.nome || '';
+        document.getElementById('email').value = item.email || '';
+      } catch (error) {
+        message.textContent = error.message;
+      }
+    }
+
+    document.getElementById('editForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const message = document.getElementById('message');
+
+      const body = {
+        nome: document.getElementById('nome').value,
+        email: document.getElementById('email').value,
+      };
+
+      try {
+        const response = await fetch(`${API_BASE}/v1/utilizadores/${id}`, {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(body),
+        });
+        if (response.status === 200) {
+          window.location.href = 'utilizadores.html';
+        } else {
+          const data = await response.json();
+          message.textContent = data.error || 'Erro ao atualizar utilizador.';
+        }
+      } catch {
+        message.textContent = 'Não foi possível ligar ao servidor.';
+      }
+    });
+
+    async function eliminar() {
+      const message = document.getElementById('message');
+      if (!confirm('Tem a certeza que pretende eliminar esta conta?')) return;
+      try {
+        const response = await fetch(`${API_BASE}/v1/utilizadores/${id}`, {
+          method: 'DELETE',
+          headers: authHeaders(),
+        });
+        if (response.status === 204) {
+          window.location.href = 'utilizadores.html';
+        } else {
+          const data = await response.json();
+          message.textContent = data.error || 'Erro ao eliminar conta.';
+        }
+      } catch {
+        message.textContent = 'Não foi possível ligar ao servidor.';
+      }
+    }
+
+    loadUtilizador();
+  </script>
+</body>
+</html>

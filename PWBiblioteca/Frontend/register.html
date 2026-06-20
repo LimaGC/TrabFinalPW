@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Criar Conta - Biblioteca</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+
+    .signin-container {
+      width: 100%;
+      max-width: 420px;
+      margin: 60px auto;
+      background: #ffffff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .signin-header {
+      background: linear-gradient(135deg, #1e3a5f, #2c5d8a);
+      color: white;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .signin-header h1 {
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: 1px;
+    }
+
+    .signin-header h2 {
+      margin: 8px 0 0;
+      font-size: 16px;
+      font-weight: normal;
+      color: white;
+    }
+
+    .signin-body {
+      padding: 32px;
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 20px;
+      color: #1e3a5f;
+    }
+
+    hr {
+      border: none;
+      height: 3px;
+      width: 60px;
+      background: #3b82f6;
+      margin: 0 0 24px 0;
+      border-radius: 999px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #374151;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: #1e3a5f;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #2c5d8a;
+    }
+
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .message {
+      margin-top: 16px;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .error {
+      color: #dc2626;
+    }
+
+    .success {
+      color: #16a34a;
+    }
+
+    .extra-links {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="signin-container">
+    <div class="signin-header">
+      <h1>Biblioteca</h1>
+      <h2>Criar Conta</h2>
+    </div>
+
+    <div class="signin-body">
+      <h2>Nova conta</h2>
+      <hr>
+
+      <form id="registerForm">
+        <label for="nome">Nome</label>
+        <input type="text" id="nome" name="nome" placeholder="O seu nome" required>
+
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="O seu email" required>
+
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="Defina uma password" required>
+
+        <button type="submit" id="registerButton">Criar conta</button>
+
+        <p id="message" class="message"></p>
+      </form>
+
+      <div class="extra-links">
+        <p>Já tem conta? <a href="login.html">Entrar</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script>
+    const registerForm = document.getElementById('registerForm');
+    const registerButton = document.getElementById('registerButton');
+    const message = document.getElementById('message');
+
+    registerForm.addEventListener('submit', async function (event) {
+      event.preventDefault();
+
+      const nome = document.getElementById('nome').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      message.textContent = '';
+      message.className = 'message';
+      registerButton.disabled = true;
+      registerButton.textContent = 'A criar...';
+
+      try {
+        const response = await fetch(`${API_BASE}/auths/signup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, email, password }),
+        });
+
+        const data = await response.json();
+
+        if (response.status === 201) {
+          message.textContent = 'Conta criada com sucesso. A redirecionar para o login...';
+          message.classList.add('success');
+          setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+        } else {
+          message.textContent = data.error || 'Erro ao criar conta.';
+          message.classList.add('error');
+        }
+      } catch (error) {
+        console.error(error);
+        message.textContent = 'Não foi possível ligar ao servidor.';
+        message.classList.add('error');
+      }
+
+      registerButton.disabled = false;
+      registerButton.textContent = 'Criar conta';
+    });
+  </script>
+
+</body>
+</html>

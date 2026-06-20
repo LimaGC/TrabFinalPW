@@ -1,6 +1,9 @@
 const { v4: uuidv4 } = require('uuid');
+const cors = require('cors');
 
 const app = require('express')();
+app.use(cors({ origin: '*' }));
+
 const consign = require('consign');
 
 const knex = require('knex');

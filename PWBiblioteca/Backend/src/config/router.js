@@ -10,6 +10,7 @@ module.exports = (app) => {
   standardRouter.use('/skills', app.routes.skills);
   standardRouter.use('/livros', app.routes.livros);
   standardRouter.use('/reservas', app.routes.reservas);
+  standardRouter.use('/utilizadores', app.routes.utilizadores);
 
   app.use('/v1', app.config.passport.authenticate(), standardRouter);
 };

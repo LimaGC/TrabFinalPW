@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - Biblioteca</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 260px;
+      background: #1e3a5f;
+      color: white;
+      padding: 28px 20px;
+      box-sizing: border-box;
+    }
+
+    .sidebar h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    .sidebar h2 {
+      margin: 8px 0 32px;
+      font-size: 14px;
+      font-weight: normal;
+      text-align: center;
+      color: #dbeafe;
+    }
+
+    .menu a {
+      display: block;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      color: white;
+      text-decoration: none;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      font-weight: bold;
+    }
+
+    .menu a:hover,
+    .menu a.active {
+      background: #2c5d8a;
+    }
+
+    .session-info {
+      margin-top: 28px;
+      font-size: 13px;
+      color: #dbeafe;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .session-info span {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 2px 10px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      font-weight: bold;
+    }
+
+    .logout {
+      margin-top: 18px;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: #dc2626;
+      color: white;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .logout:hover {
+      background: #b91c1c;
+    }
+
+    .content {
+      flex: 1;
+      padding: 40px;
+      box-sizing: border-box;
+    }
+
+    .topbar {
+      background: linear-gradient(135deg, #1e3a5f, #2c5d8a);
+      color: white;
+      padding: 28px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      margin-bottom: 28px;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 32px;
+    }
+
+    .topbar p {
+      margin: 8px 0 0;
+      color: #e0f2fe;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 22px;
+    }
+
+    .card {
+      background: white;
+      padding: 26px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 20px;
+      color: #1e3a5f;
+    }
+
+    .card hr {
+      border: none;
+      height: 3px;
+      width: 60px;
+      background: #3b82f6;
+      margin: 0 0 18px 0;
+      border-radius: 999px;
+    }
+
+    .card p {
+      line-height: 1.6;
+      color: #374151;
+    }
+
+    .card a {
+      display: inline-block;
+      margin-top: 12px;
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .card a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="layout">
+
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <main class="content">
+      <section class="topbar">
+        <h1>Dashboard</h1>
+        <p id="welcome">Bem-vindo à área de gestão da biblioteca.</p>
+      </section>
+
+      <section class="cards" id="cards"></section>
+    </main>
+
+  </div>
+
+  <script src="js/config.js"></script>
+  <script>
+    checkAuth();
+
+    document.getElementById('sidebar').innerHTML = renderSidebar('dashboard.html');
+
+    const role = getRole();
+    const cardsEl = document.getElementById('cards');
+
+    // Cartões consoante o role.
+    const cards = [
+      {
+        title: 'Catálogo de Livros',
+        text: role === 'cliente'
+          ? 'Consultar os livros e reservar os que estão disponíveis.'
+          : 'Consultar, criar, editar e eliminar livros do catálogo.',
+        href: 'livros.html',
+        link: 'Ir para Livros',
+        roles: ['cliente', 'bibliotecario', 'admin'],
+      },
+      {
+        title: 'Reservas',
+        text: role === 'cliente'
+          ? 'Ver as suas reservas e cancelá-las.'
+          : 'Gerir todas as reservas em curso: aceitar e terminar.',
+        href: 'reservas.html',
+        link: 'Ir para Reservas',
+        roles: ['cliente', 'bibliotecario', 'admin'],
+      },
+      {
+        title: 'Gestão de Contas',
+        text: 'Listar, editar, eliminar e promover/despromover utilizadores.',
+        href: 'utilizadores.html',
+        link: 'Ir para Utilizadores',
+        roles: ['admin'],
+      },
+    ];
+
+    cardsEl.innerHTML = cards
+      .filter((c) => c.roles.includes(role))
+      .map((c) => `
+        <div class="card">
+          <h2>${c.title}</h2>
+          <hr>
+          <p>${c.text}</p>
+          <a href="${c.href}">${c.link}</a>
+        </div>
+      `).join('');
+  </script>
+
+</body>
+</html>

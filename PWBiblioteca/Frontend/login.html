@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign In - Biblioteca</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+
+    .signin-container {
+      width: 100%;
+      max-width: 420px;
+      margin: 60px auto;
+      background: #ffffff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .signin-header {
+      background: linear-gradient(135deg, #1e3a5f, #2c5d8a);
+      color: white;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .signin-header h1 {
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: 1px;
+    }
+
+    .signin-header h2 {
+      margin: 8px 0 0;
+      font-size: 16px;
+      font-weight: normal;
+      color: white;
+    }
+
+    .signin-body {
+      padding: 32px;
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 20px;
+      color: #1e3a5f;
+    }
+
+    hr {
+      border: none;
+      height: 3px;
+      width: 60px;
+      background: #3b82f6;
+      margin: 0 0 24px 0;
+      border-radius: 999px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #374151;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: #1e3a5f;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #2c5d8a;
+    }
+
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .message {
+      margin-top: 16px;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .error {
+      color: #dc2626;
+    }
+
+    .success {
+      color: #16a34a;
+    }
+
+    .extra-links {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="signin-container">
+    <div class="signin-header">
+      <h1>Biblioteca</h1>
+      <h2>Sign In</h2>
+    </div>
+
+    <div class="signin-body">
+      <h2>Bem-vindo</h2>
+      <hr>
+
+      <form id="loginForm">
+        <label for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          placeholder="Introduza o seu email"
+          required
+        >
+
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Introduza a sua password"
+          required
+        >
+
+        <button type="submit" id="loginButton">Sign In</button>
+
+        <p id="message" class="message"></p>
+      </form>
+
+      <div class="extra-links">
+        <p><a href="forgot-password.html">Recuperar password</a></p>
+        <p>Ainda não tem conta? <a href="register.html">Criar conta</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const loginButton = document.getElementById('loginButton');
+    const message = document.getElementById('message');
+
+    loginForm.addEventListener('submit', async function (event) {
+      event.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      message.textContent = '';
+      message.className = 'message';
+
+      loginButton.disabled = true;
+      loginButton.textContent = 'A autenticar...';
+
+      try {
+        const response = await fetch(`${API_BASE}/auths/signin`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          // Bug corrigido: o backend espera "password" (e não "pass").
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+
+        if (response.status === 200) {
+          // Guarda token, email e role (lido do payload do JWT) em localStorage.
+          saveSession(data.token, email);
+
+          message.textContent = 'Login efetuado com sucesso.';
+          message.classList.add('success');
+
+          window.location.href = 'dashboard.html';
+        } else {
+          message.textContent = data.error || 'Erro de autenticação.';
+          message.classList.add('error');
+        }
+      } catch (error) {
+        console.error(error);
+        message.textContent = 'Não foi possível ligar ao servidor.';
+        message.classList.add('error');
+      }
+
+      loginButton.disabled = false;
+      loginButton.textContent = 'Sign In';
+    });
+  </script>
+
+</body>
+</html>
