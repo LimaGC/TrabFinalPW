@@ -314,8 +314,9 @@ table(
     [
         ["Model + logica", "src/services/*.js",
          "Logica de negocio e acesso a base de dados (via Knex)"],
-        ["Controller", "src/routes/*.js",
-         "Wrappers HTTP finos que recebem o pedido e chamam os servicos"],
+        ["Controller (endpoints)", "src/routes/*.js",
+         "Definem os endpoints da API REST (rotas HTTP) e tratam o pedido/resposta, "
+         "invocando o servico adequado e devolvendo o status + JSON"],
         ["View", "PWBiblioteca/Frontend/*.html",
          "Paginas HTML/CSS/JS que apresentam os dados ao utilizador"],
         ["Configuracao", "src/config/*.js",
@@ -327,7 +328,9 @@ p("Os servicos seguem o padrao (app) => ({ ... }), recebendo a instancia da apli
   "(e o acesso a base de dados app.db). As rotas e os servicos sao carregados "
   "automaticamente pela biblioteca consign, ficando disponiveis em app.services.<nome> "
   "e app.routes.<nome>. O ficheiro src/config/router.js liga cada conjunto de rotas ao "
-  "respetivo prefixo (por exemplo, /v1/livros, /v1/reservas).")
+  "respetivo prefixo (por exemplo, /v1/livros, /v1/reservas). Cada metodo de rota "
+  "(GET, POST, PUT, DELETE) corresponde a um endpoint da API e desempenha o papel de "
+  "controlador, ligando o pedido HTTP a operacao de negocio no servico.")
 p("O tratamento de erros e centralizado: os servicos lancam erros tipados "
   "(ValidationError, AuthenticationError, ForbiddenError) e um handler global em "
   "app.js converte o nome do erro no codigo HTTP adequado (400, 403 ou 500). A "
