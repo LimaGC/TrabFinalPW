@@ -1,0 +1,32 @@
+%% Modelo Entidade-Relacionamento - PWBiblioteca
+%% Pode ser colado em https://mermaid.live para gerar a imagem (PNG/SVG).
+erDiagram
+    UTILIZADORES ||--o{ RESERVAS : "faz"
+    LIVROS       ||--o{ RESERVAS : "tem"
+
+    UTILIZADORES {
+        integer  id PK
+        string   nome
+        string   email "UNIQUE"
+        string   password
+        string   role "cliente | bibliotecario | admin"
+        datetime criado_em
+    }
+
+    LIVROS {
+        integer  id PK
+        string   titulo
+        string   autor
+        string   isbn "UNIQUE"
+        string   estado "disponivel | indisponivel"
+        integer  quantidade
+        datetime criado_em
+    }
+
+    RESERVAS {
+        integer  id PK
+        integer  utilizador_id FK
+        integer  livro_id FK
+        datetime data_reserva
+        string   estado "pendente | confirmada | terminada | cancelada"
+    }

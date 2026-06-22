@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="470" viewBox="0 0 940 470" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <style>
+      .ent-head { fill: #6B4E32; }
+      .ent-body { fill: #ffffff; stroke: #6B4E32; stroke-width: 1.5; }
+      .ent-title { fill: #ffffff; font-size: 15px; font-weight: bold; }
+      .attr { fill: #2c2620; font-size: 12.5px; }
+      .pk { font-weight: bold; }
+      .tag { fill: #8a6420; font-size: 10.5px; font-weight: bold; }
+      .rowline { stroke: #e4ddd0; stroke-width: 1; }
+      .rel { stroke: #33261a; stroke-width: 1.6; fill: none; }
+      .card { fill: #33261a; font-size: 13px; font-weight: bold; }
+      .relverb { fill: #6B4E32; font-size: 11px; font-style: italic; }
+      .legend { fill: #444; font-size: 11.5px; }
+      .title { fill: #33261a; font-size: 18px; font-weight: bold; }
+    </style>
+  </defs>
+
+  <text x="470" y="30" text-anchor="middle" class="title">Modelo Entidade-Relacionamento — PWBiblioteca</text>
+
+  <!-- ============ UTILIZADORES ============ -->
+  <g>
+    <rect x="30" y="80" width="240" height="204" rx="8" class="ent-body"/>
+    <path d="M30,88 a8,8 0 0 1 8,-8 h224 a8,8 0 0 1 8,8 v22 h-240 z" class="ent-head"/>
+    <text x="150" y="103" text-anchor="middle" class="ent-title">UTILIZADORES</text>
+    <line x1="30" y1="110" x2="270" y2="110" class="rowline"/>
+    <text x="44" y="130" class="attr pk">id</text>            <text x="256" y="130" text-anchor="end" class="tag">PK</text>
+    <line x1="30" y1="139" x2="270" y2="139" class="rowline"/>
+    <text x="44" y="159" class="attr">nome</text>
+    <line x1="30" y1="168" x2="270" y2="168" class="rowline"/>
+    <text x="44" y="188" class="attr">email</text>           <text x="256" y="188" text-anchor="end" class="tag">U</text>
+    <line x1="30" y1="197" x2="270" y2="197" class="rowline"/>
+    <text x="44" y="217" class="attr">password</text>
+    <line x1="30" y1="226" x2="270" y2="226" class="rowline"/>
+    <text x="44" y="246" class="attr">role</text>
+    <line x1="30" y1="255" x2="270" y2="255" class="rowline"/>
+    <text x="44" y="275" class="attr">criado_em</text>
+  </g>
+
+  <!-- ============ RESERVAS (entidade associativa) ============ -->
+  <g>
+    <rect x="360" y="120" width="220" height="174" rx="8" class="ent-body"/>
+    <path d="M360,128 a8,8 0 0 1 8,-8 h204 a8,8 0 0 1 8,8 v22 h-220 z" class="ent-head"/>
+    <text x="470" y="143" text-anchor="middle" class="ent-title">RESERVAS</text>
+    <line x1="360" y1="150" x2="580" y2="150" class="rowline"/>
+    <text x="374" y="170" class="attr pk">id</text>             <text x="566" y="170" text-anchor="end" class="tag">PK</text>
+    <line x1="360" y1="179" x2="580" y2="179" class="rowline"/>
+    <text x="374" y="199" class="attr">utilizador_id</text>    <text x="566" y="199" text-anchor="end" class="tag">FK</text>
+    <line x1="360" y1="208" x2="580" y2="208" class="rowline"/>
+    <text x="374" y="228" class="attr">livro_id</text>         <text x="566" y="228" text-anchor="end" class="tag">FK</text>
+    <line x1="360" y1="237" x2="580" y2="237" class="rowline"/>
+    <text x="374" y="257" class="attr">data_reserva</text>
+    <line x1="360" y1="266" x2="580" y2="266" class="rowline"/>
+    <text x="374" y="286" class="attr">estado</text>
+  </g>
+
+  <!-- ============ LIVROS ============ -->
+  <g>
+    <rect x="670" y="80" width="240" height="232" rx="8" class="ent-body"/>
+    <path d="M670,88 a8,8 0 0 1 8,-8 h224 a8,8 0 0 1 8,8 v22 h-240 z" class="ent-head"/>
+    <text x="790" y="103" text-anchor="middle" class="ent-title">LIVROS</text>
+    <line x1="670" y1="110" x2="910" y2="110" class="rowline"/>
+    <text x="684" y="130" class="attr pk">id</text>           <text x="896" y="130" text-anchor="end" class="tag">PK</text>
+    <line x1="670" y1="139" x2="910" y2="139" class="rowline"/>
+    <text x="684" y="159" class="attr">titulo</text>
+    <line x1="670" y1="168" x2="910" y2="168" class="rowline"/>
+    <text x="684" y="188" class="attr">autor</text>
+    <line x1="670" y1="197" x2="910" y2="197" class="rowline"/>
+    <text x="684" y="217" class="attr">isbn</text>            <text x="896" y="217" text-anchor="end" class="tag">U</text>
+    <line x1="670" y1="226" x2="910" y2="226" class="rowline"/>
+    <text x="684" y="246" class="attr">estado</text>
+    <line x1="670" y1="255" x2="910" y2="255" class="rowline"/>
+    <text x="684" y="275" class="attr">quantidade</text>
+    <line x1="670" y1="284" x2="910" y2="284" class="rowline"/>
+    <text x="684" y="304" class="attr">criado_em</text>
+  </g>
+
+  <!-- ===== RELACAO: UTILIZADORES (1) para (N) RESERVAS ===== -->
+  <line x1="270" y1="182" x2="360" y2="200" class="rel"/>
+  <!-- pe-de-galinha (lado N, junto a RESERVAS) -->
+  <line x1="360" y1="200" x2="344" y2="190" class="rel"/>
+  <line x1="360" y1="200" x2="344" y2="200" class="rel"/>
+  <line x1="360" y1="200" x2="344" y2="210" class="rel"/>
+  <text x="286" y="178" class="card">1</text>
+  <text x="332" y="184" class="card">N</text>
+  <text x="315" y="205" text-anchor="middle" class="relverb">faz</text>
+
+  <!-- ===== RELACAO: LIVROS (1) para (N) RESERVAS ===== -->
+  <line x1="670" y1="182" x2="580" y2="200" class="rel"/>
+  <!-- pe-de-galinha (lado N, junto a RESERVAS) -->
+  <line x1="580" y1="200" x2="596" y2="190" class="rel"/>
+  <line x1="580" y1="200" x2="596" y2="200" class="rel"/>
+  <line x1="580" y1="200" x2="596" y2="210" class="rel"/>
+  <text x="650" y="178" class="card">1</text>
+  <text x="600" y="184" class="card">N</text>
+  <text x="625" y="205" text-anchor="middle" class="relverb">tem</text>
+
+  <!-- ============ LEGENDA ============ -->
+  <text x="30" y="360" class="legend" font-weight="bold">Legenda:</text>
+  <text x="30" y="380" class="legend">PK = chave primária   •   FK = chave estrangeira   •   U = valor único (unique)</text>
+  <text x="30" y="400" class="legend">Cardinalidade: 1 : N (o lado "muitos" é assinalado com o pé-de-galinha junto a RESERVAS).</text>
+  <text x="30" y="420" class="legend">RESERVAS é a entidade associativa que resolve a relação N:M entre UTILIZADORES e LIVROS,</text>
+  <text x="30" y="438" class="legend">acrescentando atributos próprios (data_reserva e estado).</text>
+</svg>

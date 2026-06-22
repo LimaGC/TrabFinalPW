@@ -1,0 +1,29 @@
+// Modelo Entidade-Relacionamento - PWBiblioteca
+// Pode ser colado em https://dbdiagram.io para gerar o diagrama.
+
+Table utilizadores {
+  id         integer  [pk, increment]
+  nome       varchar
+  email      varchar  [unique, not null]
+  password   varchar  [not null]
+  role       varchar  [not null, default: 'cliente', note: 'cliente | bibliotecario | admin']
+  criado_em  datetime
+}
+
+Table livros {
+  id          integer  [pk, increment]
+  titulo      varchar  [not null]
+  autor       varchar  [not null]
+  isbn        varchar  [unique, not null]
+  estado      varchar  [not null, default: 'disponivel', note: 'disponivel | indisponivel']
+  quantidade  integer  [not null, default: 1]
+  criado_em   datetime
+}
+
+Table reservas {
+  id             integer  [pk, increment]
+  utilizador_id  integer  [ref: > utilizadores.id, not null]
+  livro_id       integer  [ref: > livros.id, not null]
+  data_reserva   datetime
+  estado         varchar  [not null, default: 'pendente', note: 'pendente | confirmada | terminada | cancelada']
+}
